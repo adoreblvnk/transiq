@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment & Secrets (NEVER commit secrets)
+.env
+*.local.env
+
+# Database volumes
+postgres_data/
+neo4j_data/
+neo4j_logs/
+neo4j_import/
+
+# Large raw datasets (>50MB)
+data/raw/
+*.zip
+*.shp
+*.shx
+*.dbf
+*.cpg
+*.prj
+*.csv.gz
+
+# System / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
