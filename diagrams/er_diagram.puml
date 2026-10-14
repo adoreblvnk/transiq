@@ -1,0 +1,147 @@
+@startuml er_diagram
+
+skinparam linetype polyline
+skinparam entity {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+  FontName Helvetica
+}
+skinparam defaultFontName Helvetica
+skinparam arrowColor #2563EB
+
+' ── Entities ──
+
+entity "hdb_building" as hdb {
+  *postal_code : VARCHAR(6) <<PK>>
+  --
+  block_no : VARCHAR(10)
+  street_name : VARCHAR(100)
+  town : VARCHAR(50)
+  latitude : NUMERIC(9,6)
+  longitude : NUMERIC(9,6)
+  geom : GEOMETRY(Point)
+}
+
+entity "covered_linkway" as link {
+  *linkway_id : VARCHAR(50) <<PK>>
+  --
+  length_meters : NUMERIC(6,2)
+  is_barrier_free : BOOLEAN
+  roof_condition : VARCHAR(20)
+  geom : GEOMETRY(LineString)
+}
+
+entity "transit_stop" as stop {
+  *stop_code : VARCHAR(20) <<PK>>
+  --
+  stop_name : VARCHAR(100)
+  stop_type : VARCHAR(10)
+  mrt_line_code : VARCHAR(5)
+  has_lift_access : BOOLEAN
+  latitude : NUMERIC(9,6)
+  longitude : NUMERIC(9,6)
+  geom : GEOMETRY(Point)
+}
+
+entity "transit_service" as svc {
+  *service_no : VARCHAR(10) <<PK>>
+  --
+  operator : VARCHAR(20)
+  mode : VARCHAR(5)
+}
+
+entity "transit_route_segment" as route {
+  *service_no : VARCHAR(10) <<PK, FK>>
+  *direction : INT <<PK>>
+  *stop_sequence : INT <<PK>>
+  --
+  from_stop_code : VARCHAR(20) <<FK>>
+  to_stop_code : VARCHAR(20) <<FK>>
+  est_travel_time_min : NUMERIC(4,1)
+  distance_km : NUMERIC(5,2)
+}
+
+entity "linkway_stop_access" as lsa {
+  *linkway_id : VARCHAR(50) <<PK, FK>>
+  *stop_code : VARCHAR(20) <<PK, FK>>
+  --
+  walk_distance_m : NUMERIC(5,1)
+  is_sheltered : BOOLEAN
+}
+
+entity "commuter_profile" as commuter {
+  *user_id : SERIAL <<PK>>
+  --
+  email : VARCHAR(100) <<UNIQUE>>
+  preferred_mode : VARCHAR(20)
+  max_uncovered_walk_m : INT
+  require_barrier_free : BOOLEAN
+}
+
+entity "saved_route" as sroute {
+  *route_id : SERIAL <<PK>>
+  --
+  route_name : VARCHAR(100)
+  origin_postal : VARCHAR(6) <<FK>>
+  dest_postal : VARCHAR(6) <<FK>>
+  preferred_mode : VARCHAR(20)
+}
+
+entity "commuter_saved_route" as csr {
+  *user_id : INT <<PK, FK>>
+  *route_id : INT <<PK, FK>>
+  --
+  saved_at : TIMESTAMP
+}
+
+entity "saved_route_stop" as srs {
+  *route_id : INT <<PK, FK>>
+  *stop_code : VARCHAR(20) <<PK, FK>>
+  *stop_order : INT <<PK>>
+  --
+  leg_mode : VARCHAR(10)
+}
+
+entity "historical_congestion_log" as hcl {
+  *log_id : BIGSERIAL <<PK>>
+  --
+  stop_code : VARCHAR(20) <<FK>>
+  day_type : VARCHAR(10)
+  hour_of_day : INT
+  pt_type : VARCHAR(5)
+  crowd_index : INT
+  commuter_volume : INT
+}
+
+entity "live_crowd_snapshot" as lcs {
+  *snapshot_id : BIGSERIAL <<PK>>
+  --
+  stop_code : VARCHAR(20) <<FK>>
+  service_no : VARCHAR(10)
+  load_level : VARCHAR(5)
+  recorded_at : TIMESTAMP
+}
+
+' ── Relationships ──
+
+hdb "1" -down- "N" sroute : "origin_postal"
+hdb "1" -down- "N" sroute : "dest_postal"
+
+svc "1" -down- "N" route : "service_no"
+
+stop "1" -right- "N" route : "from_stop_code"
+stop "1" -right- "N" route : "to_stop_code"
+
+link "N" -right- "M" lsa
+lsa "M" -right- "N" stop
+
+commuter "N" -down- "M" csr
+csr "M" -down- "N" sroute
+
+sroute "N" -down- "M" srs
+srs "M" -down- "N" stop
+
+stop "1" -down- "N" hcl : "stop_code"
+stop "1" -down- "N" lcs : "stop_code"
+
+@enduml

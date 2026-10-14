@@ -1,0 +1,69 @@
+@startuml architecture
+
+skinparam defaultFontName Helvetica
+skinparam component {
+  BackgroundColor #F0F9FF
+  BorderColor #0284C7
+}
+skinparam database {
+  BackgroundColor #F0FDF4
+  BorderColor #16A34A
+}
+skinparam cloud {
+  BackgroundColor #FEF3C7
+  BorderColor #F59E0B
+}
+skinparam arrowColor #475569
+skinparam linetype polyline
+
+' Data Sources
+cloud "LTA DataMall\nAPIs" as lta
+cloud "Data.gov.sg\nStatic Downloads" as dgs
+cloud "OneMap API" as onemap
+
+' Ingestion
+component "Python Ingestion\n& Sync Worker" as ingest
+
+' Relational DB (Master)
+database "PostgreSQL 16 + PostGIS 3.4\n(System of Record)" as pg {
+  card "hdb_building" as t1
+  card "covered_linkway" as t2
+  card "transit_stop" as t3
+  card "transit_service" as t4
+  card "transit_route_segment" as t5
+  card "linkway_stop_access" as t6
+  card "commuter_profile" as t7
+  card "saved_route" as t8
+  card "commuter_saved_route" as t9
+  card "saved_route_stop" as t10
+  card "historical_congestion_log" as t11
+  card "live_crowd_snapshot" as t12
+}
+
+' NoSQL DB (Graph Projection)
+database "Neo4j 5 Community\n(Query-Optimized Graph)" as neo {
+  card "HDBBlock nodes" as n1
+  card "BusStop nodes" as n2
+  card "MRTExit nodes" as n3
+  card "CommercialBuilding nodes" as n4
+}
+
+' Application Layer
+component "FastAPI Query Backend\n(Port 8000)" as api
+component "Streamlit UI\n(Port 8501)" as ui
+
+' Connections
+lta --> ingest : Bus Arrival / Load\nMRT Crowding\nRoutes & Stops\nOD Passenger Vol
+dgs --> ingest : Linkway SHP\nHDB CSV\nMRT Exits GeoJSON
+onemap --> ingest : HDB Postal Geocoding
+
+ingest --> pg : Bulk COPY master tables\n+ Congestion logs
+pg --> ingest : Spatial views (ST_DWithin)\nfor direct walk links
+ingest --> neo : Cypher UNWIND batches\n(Direct Walk Edges & Transit Rides)
+
+pg --> api : SQL (psycopg3 pool)\nWindow functions, CTEs
+neo --> api : Cypher (Neo4j driver)\nMulti-objective traversal
+
+api --> ui : HTTP REST / JSON\nRoute itineraries & Benchmarks
+
+@enduml

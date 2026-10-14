@@ -1,0 +1,22 @@
+@startgantt
+project starts the 1st of September 2026
+saturday are closed
+sunday are closed
+
+[Group self-enrollment] lasts 7 days
+[API key acquisition LTA and OneMap] starts the 8th of September 2026
+[API key acquisition LTA and OneMap] lasts 7 days
+[Fetch and clean datasets] starts the 8th of September 2026
+[Fetch and clean datasets] lasts 7 days
+[HDB geocoding via OneMap] starts the 8th of September 2026
+[HDB geocoding via OneMap] lasts 7 days
+[PostgreSQL schema and DDL] starts the 15th of September 2026
+[PostgreSQL schema and DDL] lasts 7 days
+[Neo4j graph topology build] starts the 15th of September 2026
+[Neo4j graph topology build] lasts 7 days
+[Draft progress report] starts the 15th of September 2026
+[Draft progress report] lasts 7 days
+[Review and finalize report] starts the 22nd of September 2026
+[Review and finalize report] lasts 4 days
+[Submit progress report] happens the 26th of September 2026
+@endgantt
