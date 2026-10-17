@@ -11,6 +11,7 @@
 
 ## How the Human Wants Work Done
 
+- Autonomous Technical Resolution: Never ask the human implementation-level questions with obvious answers (e.g. missing foreign key indexes, Cypher arithmetic fixes, SQL syntax details). Solve all technical and schema mechanics autonomously. Reserve human questions strictly for high-level user and architecture choices.
 - Lean first output: Keep documents concise, direct, and readable.
 - Zero AI markers: Do not use horizontal triple dashes (`---`), em dashes, or decorative ASCII comment banners.
 - Proof over claims: Render diagrams via `plantuml` CLI, test SQL with `EXPLAIN (ANALYZE, BUFFERS)`, and run scripts to verify output before claiming completion.
