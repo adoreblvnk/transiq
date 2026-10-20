@@ -532,7 +532,7 @@ The architecture is divided into four distinct containerized services:
 - Key Features: Property graph model, native Cypher traversal, UNWIND batching
 
 ### 3. Application Layer: FastAPI Backend (api)
-- Runtime: Python 3.12 (managed via uv)
+- Runtime: Python 3.14 (managed via uv)
 - Web Framework: FastAPI 0.115+
 - ASGI Server: Uvicorn with standard workers
 - Database Drivers:
@@ -542,12 +542,16 @@ The architecture is divided into four distinct containerized services:
 - Port: 8000 (exposes REST endpoints for routing, user profiles, and benchmark telemetry)
 
 ### 4. Client Layer: Streamlit Dashboard (ui)
-- Runtime: Python 3.12 (managed via uv)
-- Framework: Streamlit 1.39+
+- Runtime: Python 3.14 (managed via uv)
+- Framework: Streamlit 1.40+
 - Mapping Component: streamlit-folium and folium (GeoJSON polyline and marker rendering)
 - HTTP Client: httpx
 - Port: 8501 (interactive route selection, mode sliders, strict filter toggle, and live benchmark viewer)
-
+- Visual Style & Theme:
+  - Palette: Light background (#F8FAFC), crisp white card surfaces (#FFFFFF), deep slate typography (#0F172A), muted secondary text (#64748B)
+  - Geometry: Boxy rectangular cards with tight 4px corners (border-radius: 4px), crisp 1px borders (border: 1px solid #E2E8F0), subtle elevation (box-shadow: 0 1px 2px rgba(0,0,0,0.04))
+  - Accents: Sheltered green (#16A34A), transit blue (#0284C7), crowded amber (#D97706)
+  - Layout: High-contrast metric chips, structured step-by-step itinerary boxes, collapsible execution plan drawer
 ## File Structure
 
 ```
