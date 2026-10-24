@@ -1,37 +1,73 @@
-[
-  {
-    "pair": 1,
-    "name": "Unsheltered Bus Stops",
-    "time_a": 16.065,
-    "time_b": 9.342,
-    "speedup": 1.7196531791907514
-  },
-  {
-    "pair": 2,
-    "name": "Sheltered Interchanges",
-    "time_a": 4.457,
-    "time_b": 3.874,
-    "speedup": 1.1504904491481671
-  },
-  {
-    "pair": 3,
-    "name": "Peak Congestion Ranking",
-    "time_a": 1.534,
-    "time_b": 0.454,
-    "speedup": 3.3788546255506606
-  },
-  {
-    "pair": 4,
-    "name": "Proximity to Linkway",
-    "time_a": 78.31,
-    "time_b": 0.114,
-    "speedup": 686.9298245614035
-  },
-  {
-    "pair": 5,
-    "name": "Multi-Hop Transit Route",
-    "time_sql": 219.256,
-    "time_neo4j": 17.8470800165087,
-    "speedup": 12.285258977781595
-  }
-]
+{
+  "pairs": [
+    {
+      "pair": 1,
+      "name": "Unsheltered Bus Stops",
+      "time_a": 20.636,
+      "time_b": 8.06,
+      "speedup": 2.5602977667493794
+    },
+    {
+      "pair": 2,
+      "name": "Sheltered Interchanges",
+      "time_a": 4.385,
+      "time_b": 3.867,
+      "speedup": 1.133953969485389
+    },
+    {
+      "pair": 3,
+      "name": "Peak Congestion Ranking",
+      "time_a": 3.253,
+      "time_b": 25.795,
+      "speedup": 0.12610971118433806
+    },
+    {
+      "pair": 4,
+      "name": "Proximity to Linkway",
+      "time_a": 82.876,
+      "time_b": 0.56,
+      "speedup": 147.99285714285713
+    },
+    {
+      "pair": 5,
+      "name": "Multi-Hop Transit Route",
+      "time_sql": 228.91,
+      "time_neo4j": 108.76841400749981,
+      "speedup": 2.1045631867374306
+    }
+  ],
+  "head_to_head": [
+    {
+      "experiment": 1,
+      "name": "Multi-Hop Route Finding Latency",
+      "sql_avg_ms": 5.39,
+      "neo4j_avg_ms": 13.21,
+      "speedup": 0.4
+    },
+    {
+      "experiment": 2,
+      "name": "Live Crowd Update Throughput",
+      "updates_count": 1000,
+      "sql_updates_per_sec": 76788.9,
+      "sql_duration_ms": 13.0,
+      "neo4j_updates_per_sec": 2774.3,
+      "neo4j_duration_ms": 360.5
+    },
+    {
+      "experiment": 3,
+      "name": "Spatial Proximity Search Latency Distribution",
+      "sample_points": 50,
+      "postgis": {
+        "p50_ms": 0.33,
+        "p95_ms": 1.34,
+        "p99_ms": 1.53
+      },
+      "neo4j": {
+        "p50_ms": 4.13,
+        "p95_ms": 12.75,
+        "p99_ms": 42.49
+      }
+    }
+  ],
+  "timestamp": "2026-10-22T11:28:07Z"
+}

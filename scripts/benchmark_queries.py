@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """
 TRANSIQ — Query Optimization & Benchmarking Suite
-Executes and compares the 5 query pairs and 3 head-to-head benchmarks
-using PostgreSQL EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) and Neo4j profiling.
-Outputs detailed metrics on runtime, planning time, and buffer page accesses.
+Executes and compares:
+1. Five query pairs using PostgreSQL EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) & Neo4j Profiler:
+   - Pair 1: Unsheltered Bus Stops (NOT IN vs NOT EXISTS)
+   - Pair 2: Sheltered Interchanges (INTERSECT vs INNER JOIN)
+   - Pair 3: Peak Congestion Ranking (Correlated Self-Join vs Window Function)
+   - Pair 4: Proximity Search (ST_Distance vs ST_DWithin with GiST index)
+   - Pair 5: Multi-Hop Transit Route (Recursive SQL CTE vs Neo4j Native Cypher)
+2. Three Head-to-Head empirical experiments:
+   - Experiment 1: Multi-Hop Route Finding Latency
+   - Experiment 2: Live Crowd Update Throughput (Batched UPDATE vs Cypher UNWIND)
+   - Experiment 3: Spatial Proximity Search Latency Distribution (p50/p95/p99)
 """
 
 import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
+import numpy as np
 import psycopg
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
@@ -41,12 +51,16 @@ def run_pg_explain(conn, query: str, params: tuple | None = None) -> Dict[str, A
         return plan_json
 
 
+# ---------------------------------------------------------------------------
+# Part 1: The Five Query Optimization Benchmark Pairs
+# ---------------------------------------------------------------------------
+
 def benchmark_pair_1(conn):
     print("\n-----------------------------------------------------------")
     print("Benchmark 1: Unsheltered Bus Stops (NOT IN vs NOT EXISTS)")
     print("-----------------------------------------------------------")
 
-    # Formulation A: NOT IN subquery (Full table scan & NULL hazard)
+    # Formulation A: NOT IN subquery
     q_a = """
     SELECT ts.stop_code, ts.stop_name, ts.stop_type
     FROM transit_stop ts
@@ -62,7 +76,7 @@ def benchmark_pair_1(conn):
     t_a = plan_a["Execution Time"]
     hits_a = plan_a["Plan"].get("Shared Hit Blocks", 0)
 
-    # Formulation B: NOT EXISTS with index pushdown
+    # Formulation B: Correlated NOT EXISTS with index
     q_b = """
     SELECT ts.stop_code, ts.stop_name, ts.stop_type
     FROM transit_stop ts
@@ -143,22 +157,25 @@ def benchmark_pair_3(conn):
         ) AS rolling_avg
     FROM historical_congestion_log h1
     WHERE h1.day_type = 'WEEKDAY' AND h1.hour_of_day BETWEEN 7 AND 9
-    LIMIT 500;
+    LIMIT 1000;
     """
     plan_a = run_pg_explain(conn, q_a)
     t_a = plan_a["Execution Time"]
 
-    # Formulation B: Window Function AVG() OVER (PARTITION BY)
+    # Formulation B: Single-pass window function
     q_b = """
-    SELECT
+    SELECT 
         stop_code, hour_of_day, commuter_volume,
         AVG(commuter_volume) OVER (
             PARTITION BY stop_code ORDER BY hour_of_day
             ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING
-        ) AS rolling_3hr_avg
+        ) AS rolling_avg,
+        DENSE_RANK() OVER (
+            PARTITION BY hour_of_day ORDER BY commuter_volume DESC
+        ) AS congestion_rank
     FROM historical_congestion_log
     WHERE day_type = 'WEEKDAY' AND hour_of_day BETWEEN 7 AND 9
-    LIMIT 500;
+    LIMIT 1000;
     """
     plan_b = run_pg_explain(conn, q_b)
     t_b = plan_b["Execution Time"]
@@ -175,26 +192,22 @@ def benchmark_pair_4(conn):
     print("Benchmark 4: Proximity Search (ST_Distance vs ST_DWithin GiST)")
     print("-----------------------------------------------------------")
 
-    # Formulation A: Brute force ST_Distance calculation
+    # Formulation A: Brute-force ST_Distance across all rows
     q_a = """
     SELECT h.postal_code, w.linkway_id
-    FROM hdb_building h
-    JOIN covered_linkway w 
-      ON ST_Distance(h.geom::geography, w.geom::geography) <= 40
+    FROM hdb_building h, covered_linkway w
     WHERE h.postal_code = '640183'
-    LIMIT 5;
+      AND ST_Distance(h.geom::geography, w.geom::geography) <= 50;
     """
     plan_a = run_pg_explain(conn, q_a)
     t_a = plan_a["Execution Time"]
 
-    # Formulation B: ST_DWithin with GiST Index
+    # Formulation B: ST_DWithin using GiST R-Tree index
     q_b = """
     SELECT h.postal_code, w.linkway_id
     FROM hdb_building h
-    JOIN covered_linkway w 
-      ON ST_DWithin(h.geom::geography, w.geom::geography, 40)
-    WHERE h.postal_code = '640183'
-    LIMIT 5;
+    JOIN covered_linkway w ON ST_DWithin(h.geom, w.geom, 0.00045)
+    WHERE h.postal_code = '640183';
     """
     plan_b = run_pg_explain(conn, q_b)
     t_b = plan_b["Execution Time"]
@@ -259,6 +272,177 @@ def benchmark_pair_5(conn, neo4j_driver):
     return {"pair": 5, "name": "Multi-Hop Transit Route", "time_sql": t_sql, "time_neo4j": t_neo4j, "speedup": speedup}
 
 
+# ---------------------------------------------------------------------------
+# Part 2: The Three Head-to-Head Empirical Experiments
+# ---------------------------------------------------------------------------
+
+def run_experiment_1_multihop(conn, neo4j_driver) -> Dict[str, Any]:
+    print("\n-----------------------------------------------------------")
+    print("Experiment 1: Multi-Hop Route Finding (Warm Latency Across 10 Runs)")
+    print("-----------------------------------------------------------")
+    sql_times = []
+    neo4j_times = []
+
+    q_sql = """
+    WITH RECURSIVE TransitPath AS (
+        SELECT from_stop_code, to_stop_code, service_no, est_travel_time_min::numeric AS total_time, 0 AS transfers,
+               ARRAY[from_stop_code, to_stop_code]::varchar[] AS visited_stops
+        FROM transit_route_segment WHERE from_stop_code = '28009'
+        UNION ALL
+        SELECT tp.from_stop_code, s.to_stop_code, s.service_no, (tp.total_time + s.est_travel_time_min)::numeric,
+               tp.transfers + 1, tp.visited_stops || s.to_stop_code
+        FROM TransitPath tp
+        JOIN transit_route_segment s ON tp.to_stop_code = s.from_stop_code
+        WHERE NOT (s.to_stop_code = ANY(tp.visited_stops)) AND tp.transfers <= 1 AND tp.total_time <= 30
+    )
+    SELECT * FROM TransitPath WHERE to_stop_code = '11389' LIMIT 3;
+    """
+    q_cypher = """
+    MATCH p = (start:BusStop {code: '28009'})-[:TRANSIT_RIDE*1..4]->(dest:BusStop {code: '11389'})
+    RETURN [n IN nodes(p) | n.code] AS path LIMIT 3;
+    """
+
+    for _ in range(10):
+        # SQL run
+        t0 = time.perf_counter()
+        with conn.cursor() as cur:
+            cur.execute(q_sql)
+            cur.fetchall()
+        sql_times.append((time.perf_counter() - t0) * 1000.0)
+
+        # Neo4j run
+        t0 = time.perf_counter()
+        with neo4j_driver.session() as session:
+            session.run(q_cypher).consume()
+        neo4j_times.append((time.perf_counter() - t0) * 1000.0)
+
+    avg_sql = float(np.mean(sql_times))
+    avg_neo = float(np.mean(neo4j_times))
+    print(f"  SQL Average Latency:   {avg_sql:.2f} ms")
+    print(f"  Neo4j Average Latency: {avg_neo:.2f} ms")
+    print(f"  Speedup:               {avg_sql / max(0.01, avg_neo):.1f}x")
+    return {
+        "experiment": 1,
+        "name": "Multi-Hop Route Finding Latency",
+        "sql_avg_ms": round(avg_sql, 2),
+        "neo4j_avg_ms": round(avg_neo, 2),
+        "speedup": round(avg_sql / max(0.01, avg_neo), 1),
+    }
+
+
+def run_experiment_2_throughput(conn, neo4j_driver) -> Dict[str, Any]:
+    print("\n-----------------------------------------------------------")
+    print("Experiment 2: Live Crowd Update Throughput (1,000 Stop Telemetry Mutations)")
+    print("-----------------------------------------------------------")
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT stop_code FROM transit_stop LIMIT 1000;")
+        stops = [r[0] for r in cur.fetchall()]
+
+    updates = [(s, random.choice(["SEA", "SDA", "LSD"])) for s in stops]
+
+    # PostgreSQL: Group Commit via UPDATE FROM (VALUES ...)
+    t0 = time.perf_counter()
+    with conn.cursor() as cur:
+        values_str = ", ".join(f"('{s}', '{l}')" for s, l in updates)
+        sql = f"""
+        UPDATE live_crowd_snapshot AS lcs
+        SET load_level = v.load_level, recorded_at = NOW()
+        FROM (VALUES {values_str}) AS v(stop_code, load_level)
+        WHERE lcs.stop_code = v.stop_code;
+        """
+        cur.execute(sql)
+        conn.commit()
+    t_sql_sec = time.perf_counter() - t0
+    sql_rate = len(updates) / max(0.001, t_sql_sec)
+
+    # Neo4j: Batched Cypher UNWIND write transaction
+    neo_batch = [{"stop_code": s, "load_level": l} for s, l in updates]
+    t0 = time.perf_counter()
+    with neo4j_driver.session() as session:
+        session.run(
+            """
+            UNWIND $batch AS item
+            MATCH (:BusStop {code: item.stop_code})-[r:TRANSIT_RIDE]->()
+            SET r.live_load = item.load_level
+            """,
+            batch=neo_batch,
+        ).consume()
+    t_neo_sec = time.perf_counter() - t0
+    neo_rate = len(updates) / max(0.001, t_neo_sec)
+
+    print(f"  PostgreSQL UPDATE FROM VALUES: {sql_rate:.1f} updates/sec ({t_sql_sec*1000:.1f} ms total)")
+    print(f"  Neo4j Cypher UNWIND:           {neo_rate:.1f} updates/sec ({t_neo_sec*1000:.1f} ms total)")
+    return {
+        "experiment": 2,
+        "name": "Live Crowd Update Throughput",
+        "updates_count": len(updates),
+        "sql_updates_per_sec": round(sql_rate, 1),
+        "sql_duration_ms": round(t_sql_sec * 1000.0, 1),
+        "neo4j_updates_per_sec": round(neo_rate, 1),
+        "neo4j_duration_ms": round(t_neo_sec * 1000.0, 1),
+    }
+
+
+def run_experiment_3_proximity(conn, neo4j_driver) -> Dict[str, Any]:
+    print("\n-----------------------------------------------------------")
+    print("Experiment 3: Spatial Proximity Search Latency Distribution (50 Points)")
+    print("-----------------------------------------------------------")
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT latitude, longitude FROM hdb_building LIMIT 50;")
+        coords = [(float(r[0]), float(r[1])) for r in cur.fetchall()]
+
+    sql_latencies = []
+    neo_latencies = []
+
+    q_sql = """
+    SELECT stop_code FROM transit_stop
+    WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.0045)
+    LIMIT 10;
+    """
+    q_neo = """
+    MATCH (b:BusStop)
+    WHERE point.distance(b.location, point({latitude: $lat, longitude: $lon})) <= 500
+    RETURN b.code LIMIT 10;
+    """
+
+    for lat, lon in coords:
+        # SQL GiST query
+        t0 = time.perf_counter()
+        with conn.cursor() as cur:
+            cur.execute(q_sql, (lon, lat))
+            cur.fetchall()
+        sql_latencies.append((time.perf_counter() - t0) * 1000.0)
+
+        # Neo4j spatial point.distance query
+        t0 = time.perf_counter()
+        with neo4j_driver.session() as session:
+            session.run(q_neo, lat=lat, lon=lon).consume()
+        neo_latencies.append((time.perf_counter() - t0) * 1000.0)
+
+    p50_sql, p95_sql, p99_sql = np.percentile(sql_latencies, [50, 95, 99])
+    p50_neo, p95_neo, p99_neo = np.percentile(neo_latencies, [50, 95, 99])
+
+    print(f"  PostGIS GiST R-Tree: p50={p50_sql:.2f} ms | p95={p95_sql:.2f} ms | p99={p99_sql:.2f} ms")
+    print(f"  Neo4j point.distance: p50={p50_neo:.2f} ms | p95={p95_neo:.2f} ms | p99={p99_neo:.2f} ms")
+    return {
+        "experiment": 3,
+        "name": "Spatial Proximity Search Latency Distribution",
+        "sample_points": len(coords),
+        "postgis": {
+            "p50_ms": round(float(p50_sql), 2),
+            "p95_ms": round(float(p95_sql), 2),
+            "p99_ms": round(float(p99_sql), 2),
+        },
+        "neo4j": {
+            "p50_ms": round(float(p50_neo), 2),
+            "p95_ms": round(float(p95_neo), 2),
+            "p99_ms": round(float(p99_neo), 2),
+        },
+    }
+
+
 def run_all_benchmarks():
     print("=========================================================")
     print("  TRANSIQ — Automated Query Optimization Benchmark Suite ")
@@ -267,17 +451,30 @@ def run_all_benchmarks():
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS))
 
     results = []
+    head_to_head = []
     try:
+        # Part 1: Five Optimization Pairs
         results.append(benchmark_pair_1(conn))
         results.append(benchmark_pair_2(conn))
         results.append(benchmark_pair_3(conn))
         results.append(benchmark_pair_4(conn))
         results.append(benchmark_pair_5(conn, neo4j_driver))
 
+        # Part 2: Three Head-to-Head Experiments
+        head_to_head.append(run_experiment_1_multihop(conn, neo4j_driver))
+        head_to_head.append(run_experiment_2_throughput(conn, neo4j_driver))
+        head_to_head.append(run_experiment_3_proximity(conn, neo4j_driver))
+
+        out_data = {
+            "pairs": results,
+            "head_to_head": head_to_head,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+
         out_path = ROOT_DIR / "data" / "benchmark_results.json"
         with open(out_path, "w") as f:
-            json.dump(results, f, indent=2)
-        print(f"\nAll benchmark results saved to {out_path}")
+            json.dump(out_data, f, indent=2)
+        print(f"\nAll benchmark results and experiments saved to {out_path}")
     finally:
         conn.close()
         neo4j_driver.close()
