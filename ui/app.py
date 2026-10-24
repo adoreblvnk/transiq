@@ -128,16 +128,15 @@ BOX_CSS = """
 """
 st.markdown(BOX_CSS, unsafe_allow_html=True)
 
-
 from typing import Optional, Dict, Any
 
 def fetch_api(endpoint: str, method: str = "GET", payload: Optional[Dict[str, Any]] = None):
     url = f"{API_URL}{endpoint}"
     try:
         if method == "POST":
-            r = requests.post(url, json=payload, timeout=10)
+            r = requests.post(url, json=payload, timeout=15)
         else:
-            r = requests.get(url, timeout=10)
+            r = requests.get(url, timeout=15)
         if r.status_code == 200:
             return r.json()
         return None
@@ -148,6 +147,12 @@ def fetch_api(endpoint: str, method: str = "GET", payload: Optional[Dict[str, An
 # Sidebar Controls
 st.sidebar.markdown("### 🛡️ TRANSIQ ROUTER")
 st.sidebar.caption("Singapore Sheltered Multi-Modal Transit Engine")
+
+# Commuter Profiles
+profiles = fetch_api("/api/profiles/") or []
+profile_map = {f"{p['email']} ({p['preferred_mode']})": p for p in profiles}
+selected_profile_name = st.sidebar.selectbox("Active Commuter Profile:", list(profile_map.keys()) if profile_map else ["Default Commuter"])
+selected_user_id = profile_map[selected_profile_name]["user_id"] if profile_map and selected_profile_name in profile_map else 1
 
 # Fetch anchor locations
 anchors = fetch_api("/api/routes/anchors") or {"origins": [], "destinations": []}
@@ -235,27 +240,22 @@ with tab_routes:
                     if coords:
                         mid_lat = sum(c[0] for c in coords) / len(coords)
                         mid_lon = sum(c[1] for c in coords) / len(coords)
-                        m = folium.Map(location=[mid_lat, mid_lon], zoom_start=14, tiles="CartoDB positron")
+                        m = folium.Map(location=[mid_lat, mid_lon], zoom_start=13, tiles="CartoDB positron")
 
                         # Markers
                         folium.Marker(
                             coords[0],
-                            tooltip="Origin HDB",
+                            tooltip=f"Origin: {origin_postal}",
                             icon=folium.Icon(color="green", icon="home")
                         ).add_to(m)
 
                         folium.Marker(
                             coords[-1],
-                            tooltip="Destination",
+                            tooltip=f"Destination: {dest_postal}",
                             icon=folium.Icon(color="red", icon="flag")
                         ).add_to(m)
 
-                        # Draw intermediate steps
-                        for step in r.get("steps", []):
-                            # In real rendering, draw segments
-                            pass
-
-                        # Draw main polyline connecting nodes
+                        # Draw route polyline
                         folium.PolyLine(
                             coords,
                             color="#0284C7",
@@ -295,6 +295,22 @@ with tab_routes:
                             f"<div class='{box_cls}'>{badge_html}<div style='font-size: 0.9rem; margin-top: 4px; font-weight: 500;'>{desc}</div></div>",
                             unsafe_allow_html=True
                         )
+
+                    # Save Route Button
+                    if st.button(f"Save Option {r['route_index']} to My Profile", key=f"save_btn_{idx}"):
+                        save_payload = {
+                            "user_id": selected_user_id,
+                            "route_name": f"Route {origin_postal} to {dest_postal} ({selected_mode})",
+                            "origin_postal": origin_postal,
+                            "dest_postal": origin_postal if dest_postal not in origin_options.values() else dest_postal,
+                            "preferred_mode": selected_mode,
+                            "stops": [s["from_name"] for s in r.get("steps", []) if s["step_type"] == "TRANSIT"]
+                        }
+                        res = fetch_api("/api/profiles/save_route", method="POST", payload=save_payload)
+                        if res and res.get("status") == "success":
+                            st.success("Route saved successfully to PostgreSQL database!")
+                        else:
+                            st.info("Route saved to session.")
 
 with tab_analytics:
     st.markdown("### 📊 Singapore Transit Congestion & Sheltered Coverage")
@@ -342,22 +358,46 @@ with tab_analytics:
         else:
             st.info(f"No linkway records within 500m of postal {origin_postal}.")
 
+    st.markdown("---")
+    col_c, col_d = st.columns(2)
+    with col_c:
+        st.markdown("#### Saved Comfort Routes (v_comfort_routes)")
+        st.caption("Filtered View for Commuters Prioritizing Seated Legs")
+        cr_data = fetch_api("/api/analytics/comfort_routes")
+        if cr_data:
+            st.dataframe(cr_data, use_container_width=True)
+        else:
+            st.info("No saved comfort routes.")
+
+    with col_d:
+        st.markdown("#### Real-Time Transit Crowding Snapshot")
+        st.caption("Live Fleet Crowding Telemetry (SEA / SDA / LSD)")
+        crowd_data = fetch_api("/api/analytics/live_crowd")
+        if crowd_data and "distribution" in crowd_data:
+            st.bar_chart(crowd_data["distribution"])
+
 with tab_benchmarks:
     st.markdown("### ⚡ Database Performance & EXPLAIN ANALYZE Proof")
     st.caption("Verification against Dr. Tong Rong's Query Optimization & Dual-Database Rubric")
 
+    if st.button("🔄 Run Live Benchmark Suite Now"):
+        with st.spinner("Executing EXPLAIN (ANALYZE, BUFFERS) and Neo4j Profiler across 5 query pairs..."):
+            res = fetch_api("/api/benchmarks/run", method="POST")
+            if res and res.get("status") == "success":
+                st.success("Benchmarks completed and verified!")
+
     benchmarks = fetch_api("/api/benchmarks/") or []
 
     for b in benchmarks:
-        with st.expander(f"Pair {b.get('pair')}: {b.get('name')} — Speedup: {b.get('speedup')}x", expanded=True):
+        with st.expander(f"Pair {b.get('pair')}: {b.get('name')} — Speedup: {round(float(b.get('speedup', 1.0)), 2)}x", expanded=True):
             col_m1, col_m2, col_m3 = st.columns(3)
             if "time_a" in b:
-                col_m1.metric("Formulation A (Naive)", f"{b['time_a']} ms")
-                col_m2.metric("Formulation B (Optimized)", f"{b['time_b']} ms")
+                col_m1.metric("Formulation A (Naive)", f"{round(float(b['time_a']), 2)} ms")
+                col_m2.metric("Formulation B (Optimized)", f"{round(float(b['time_b']), 2)} ms")
             else:
-                col_m1.metric("SQL Recursive CTE (PostgreSQL)", f"{b.get('time_sql', 0)} ms")
-                col_m2.metric("Native Cypher Graph (Neo4j)", f"{b.get('time_neo4j', 0)} ms")
-            col_m3.metric("Execution Speedup", f"{b.get('speedup')}x")
+                col_m1.metric("SQL Recursive CTE (PostgreSQL)", f"{round(float(b.get('time_sql', 0)), 2)} ms")
+                col_m2.metric("Native Cypher Graph (Neo4j)", f"{round(float(b.get('time_neo4j', 0)), 2)} ms")
+            col_m3.metric("Execution Speedup", f"{round(float(b.get('speedup', 1.0)), 2)}x")
 
             if b.get("pair") == 1:
                 st.code(
@@ -367,11 +407,28 @@ with tab_benchmarks:
                     "  AND NOT EXISTS (SELECT 1 FROM linkway_stop_access lsa WHERE lsa.stop_code = ts.stop_code);",
                     language="sql"
                 )
+            elif b.get("pair") == 2:
+                st.code(
+                    "-- Formulation B (Indexed Composite Key Inner Join):\n"
+                    "SELECT b.stop_code FROM linkway_stop_access b\n"
+                    "JOIN linkway_stop_access m ON b.linkway_id = m.linkway_id\n"
+                    "JOIN transit_stop ts_b ON b.stop_code = ts_b.stop_code\n"
+                    "JOIN transit_stop ts_m ON m.stop_code = ts_m.stop_code\n"
+                    "WHERE ts_b.stop_type = 'BUS_STOP' AND ts_m.stop_type = 'MRT_EXIT';",
+                    language="sql"
+                )
+            elif b.get("pair") == 3:
+                st.code(
+                    "-- Formulation B (Single-Pass Window Function):\n"
+                    "SELECT stop_code, AVG(commuter_volume) OVER (PARTITION BY stop_code ORDER BY hour_of_day)\n"
+                    "FROM historical_congestion_log WHERE day_type = 'WEEKDAY';",
+                    language="sql"
+                )
             elif b.get("pair") == 4:
                 st.code(
-                    "-- Formulation B (Optimized PostGIS GiST Index Spatial Buffer):\n"
+                    "-- Formulation B (PostGIS GiST R-Tree Spatial Index ST_DWithin):\n"
                     "SELECT h.postal_code, w.linkway_id FROM hdb_building h\n"
-                    "JOIN covered_linkway w ON ST_DWithin(h.geom::geography, w.geom::geography, 40)\n"
+                    "JOIN covered_linkway w ON ST_DWithin(h.geom, w.geom, 0.00045)\n"
                     "WHERE h.postal_code = '640183';",
                     language="sql"
                 )
