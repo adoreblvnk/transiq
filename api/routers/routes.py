@@ -51,8 +51,10 @@ def get_anchor_locations():
                 """
                 SELECT postal_code, block_no, street_name, town, latitude, longitude
                 FROM hdb_building
-                WHERE postal_code IN ('640183', '010001', '100001', '520101', '560101', '730101')
-                ORDER BY town;
+                WHERE postal_code IN ('640183', '560101', '520101', '730101', '100001', '310001', '010001')
+                   OR town IN ('Jurong West', 'Tampines', 'Woodlands', 'Ang Mo Kio', 'Bedok', 'Toa Payoh')
+                ORDER BY town, block_no
+                LIMIT 15;
                 """
             )
             hdbs = [
@@ -72,6 +74,8 @@ def get_anchor_locations():
         {"postal_code": "238839", "label": "Orchard Central Hub (238839)", "latitude": 1.3008, "longitude": 103.8398, "type": "DESTINATION"},
         {"postal_code": "529536", "label": "Tampines 1 Shopping Mall (529536)", "latitude": 1.3542, "longitude": 103.9452, "type": "DESTINATION"},
         {"postal_code": "738099", "label": "Woodlands Civic Centre (738099)", "latitude": 1.4360, "longitude": 103.7865, "type": "DESTINATION"},
+        {"postal_code": "579837", "label": "Junction 8 Bishan (579837)", "latitude": 1.3506, "longitude": 103.8488, "type": "DESTINATION"},
+        {"postal_code": "138683", "label": "Fusionopolis One-North (138683)", "latitude": 1.2989, "longitude": 103.7876, "type": "DESTINATION"},
     ]
 
     return {"origins": hdbs, "destinations": commercial_destinations + hdbs}
@@ -80,7 +84,7 @@ def get_anchor_locations():
 @router.post("/search", response_model=List[RouteOption])
 def search_transit_routes(req: RouteSearchRequest):
     """Find multi-modal transit routes matching commuter mode preferences."""
-    # Weights default by mode
+    # Penalty weights based on commuter mode
     w_unsh = req.weight_unsheltered
     w_crowd = req.weight_crowd
     w_trans = req.weight_transfer
@@ -98,32 +102,53 @@ def search_transit_routes(req: RouteSearchRequest):
         if w_crowd is None: w_crowd = 5.0
         if w_trans is None: w_trans = 25.0
     else:  # FASTEST
-        if w_unsh is None: w_unsh = 0.0
-        if w_crowd is None: w_crowd = 0.0
-        if w_trans is None: w_trans = 0.0
+        if w_unsh is None: w_unsh = 0.005
+        if w_crowd is None: w_crowd = 0.5
+        if w_trans is None: w_trans = 1.0
 
-    cypher_query = """
-    MATCH p = (start:HDBBlock {postal_code: $origin_postal})
-              -[:SHELTERED_WALK|UNSHELTERED_WALK|TRANSIT_RIDE|STATION_TRANSFER*1..7]->
-              (dest {postal_code: $dest_postal})
-    WHERE ($strict_mode = false OR (
-        ALL(r IN relationships(p) WHERE type(r) <> 'TRANSIT_RIDE' OR r.live_load <> 'LSD') AND
-        ALL(r IN relationships(p) WHERE type(r) <> 'UNSHELTERED_WALK')
-    ))
-    WITH p,
-         [r IN relationships(p) WHERE type(r) = 'TRANSIT_RIDE']     AS transit_legs,
-         [r IN relationships(p) WHERE type(r) = 'UNSHELTERED_WALK']  AS unsheltered_walks,
-         [r IN relationships(p) WHERE type(r) = 'SHELTERED_WALK']    AS sheltered_walks
-    WITH p, transit_legs, unsheltered_walks, sheltered_walks,
+    params = {
+        "origin_postal": req.origin_postal,
+        "dest_postal": req.dest_postal,
+        "strict_mode": req.strict_mode,
+        "weight_unsheltered": float(w_unsh),
+        "weight_crowd": float(w_crowd),
+        "weight_transfer": float(w_trans),
+    }
+
+    # Query 1: Local Multi-Modal Transit (up to 4 hops)
+    cypher_local = """
+    MATCH (start {postal_code: $origin_postal})
+    MATCH (dest {postal_code: $dest_postal})
+
+    MATCH (start)-[w1:SHELTERED_WALK|UNSHELTERED_WALK]->(s1)
+    WHERE s1:BusStop OR s1:MRTExit
+    MATCH tp = (s1)-[:TRANSIT_RIDE|STATION_TRANSFER*1..4]->(s2)
+    WHERE (s2:BusStop OR s2:MRTExit) AND (
+        $strict_mode = false OR (
+            ALL(r IN relationships(tp) WHERE type(r) <> 'TRANSIT_RIDE' OR r.live_load <> 'LSD') AND
+            type(w1) = 'SHELTERED_WALK'
+        )
+    )
+    MATCH (s2)-[w2:SHELTERED_WALK|UNSHELTERED_WALK]->(dest)
+    WHERE $strict_mode = false OR type(w2) = 'SHELTERED_WALK'
+
+    WITH start, dest, w1, tp, w2,
+         [r IN relationships(tp) WHERE type(r) = 'TRANSIT_RIDE'] AS transit_legs
+    WITH start, dest, w1, tp, w2, transit_legs,
          reduce(t = 0.0, r IN transit_legs | t + r.avg_duration_min) AS base_travel_time,
-         reduce(u = 0.0, r IN unsheltered_walks | u + r.distance_m)   AS unsheltered_m,
-         reduce(s = 0.0, r IN sheltered_walks | s + r.distance_m)     AS sheltered_m,
-         size(transit_legs) - 1                                       AS transfer_count,
-         size([r IN transit_legs WHERE r.live_load = 'LSD'])          AS lsd_leg_count
+         (CASE WHEN type(w1) = 'UNSHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
+          CASE WHEN type(w2) = 'UNSHELTERED_WALK' THEN w2.distance_m ELSE 0.0 END) AS unsheltered_m,
+         (CASE WHEN type(w1) = 'SHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
+          CASE WHEN type(w2) = 'SHELTERED_WALK' THEN w2.distance_m ELSE 0.0 END) AS sheltered_m,
+         size(transit_legs) - 1 AS transfer_count,
+         size([r IN transit_legs WHERE r.live_load = 'LSD']) AS lsd_leg_count,
+         nodes(tp) AS tp_nodes,
+         relationships(tp) AS tp_rels
+
     RETURN
-        [n IN nodes(p) | coalesce(n.name, n.postal_code, n.code)] AS itinerary,
-        nodes(p) AS node_objs,
-        relationships(p) AS rel_objs,
+        [start] + tp_nodes + [dest] AS node_objs,
+        [w1] + tp_rels + [w2] AS rel_objs,
+        [n IN ([start] + tp_nodes + [dest]) | coalesce(n.name, n.postal_code, n.code)] AS itinerary,
         transfer_count,
         base_travel_time,
         sheltered_m,
@@ -137,19 +162,59 @@ def search_transit_routes(req: RouteSearchRequest):
     LIMIT 3;
     """
 
-    params = {
-        "origin_postal": req.origin_postal,
-        "dest_postal": req.dest_postal,
-        "strict_mode": req.strict_mode,
-        "weight_unsheltered": float(w_unsh),
-        "weight_crowd": float(w_crowd),
-        "weight_transfer": float(w_trans)
-    }
+    # Query 2: Long-distance Transit via ShortestPath on Transit Graph
+    cypher_long = """
+    MATCH (start {postal_code: $origin_postal})
+    MATCH (dest {postal_code: $dest_postal})
+
+    MATCH (start)-[w1:SHELTERED_WALK|UNSHELTERED_WALK]->(s1)
+    WHERE (s1:BusStop OR s1:MRTExit) AND ($strict_mode = false OR type(w1) = 'SHELTERED_WALK')
+    MATCH (s2)-[w2:SHELTERED_WALK|UNSHELTERED_WALK]->(dest)
+    WHERE (s2:BusStop OR s2:MRTExit) AND ($strict_mode = false OR type(w2) = 'SHELTERED_WALK')
+
+    MATCH p = shortestPath((s1)-[:TRANSIT_RIDE|STATION_TRANSFER*..25]->(s2))
+    WHERE ($strict_mode = false OR ALL(r IN relationships(p) WHERE type(r) <> 'TRANSIT_RIDE' OR r.live_load <> 'LSD'))
+
+    WITH start, dest, w1, p, w2,
+         [r IN relationships(p) WHERE type(r) = 'TRANSIT_RIDE'] AS transit_legs
+    WITH start, dest, w1, p, w2, transit_legs,
+         reduce(t = 0.0, r IN transit_legs | t + r.avg_duration_min) AS base_travel_time,
+         (CASE WHEN type(w1) = 'UNSHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
+          CASE WHEN type(w2) = 'UNSHELTERED_WALK' THEN w2.distance_m ELSE 0.0 END) AS unsheltered_m,
+         (CASE WHEN type(w1) = 'SHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
+          CASE WHEN type(w2) = 'SHELTERED_WALK' THEN w2.distance_m ELSE 0.0 END) AS sheltered_m,
+         size(transit_legs) - 1 AS transfer_count,
+         size([r IN transit_legs WHERE r.live_load = 'LSD']) AS lsd_leg_count
+
+    RETURN
+        [start] + nodes(p) + [dest] AS node_objs,
+        [w1] + relationships(p) + [w2] AS rel_objs,
+        [n IN ([start] + nodes(p) + [dest]) | coalesce(n.name, n.postal_code, n.code)] AS itinerary,
+        transfer_count,
+        base_travel_time,
+        sheltered_m,
+        unsheltered_m,
+        lsd_leg_count,
+        (base_travel_time
+          + (unsheltered_m * $weight_unsheltered)
+          + (lsd_leg_count * $weight_crowd)
+          + (transfer_count * $weight_transfer)) AS score
+    ORDER BY score ASC
+    LIMIT 3;
+    """
+
+    records = []
+    with get_neo4j_session() as session:
+        # Try local routes first
+        local_res = list(session.run(cypher_local, params))
+        if local_res:
+            records.extend(local_res)
+        else:
+            # Fall back to long-distance shortestPath
+            long_res = list(session.run(cypher_long, params))
+            records.extend(long_res)
 
     results = []
-    with get_neo4j_session() as session:
-        records = list(session.run(cypher_query, params))
-
     for idx, rec in enumerate(records, 1):
         node_objs = rec["node_objs"]
         rel_objs = rec["rel_objs"]
@@ -170,21 +235,23 @@ def search_transit_routes(req: RouteSearchRequest):
             to_name = to_n.get("name") or to_n.get("postal_code") or to_n.get("code") or "Destination"
 
             if rtype == "SHELTERED_WALK":
+                dist = float(rel.get("distance_m", 50.0))
                 steps.append(ItineraryStep(
                     step_type="WALK",
                     from_name=str(from_name),
                     to_name=str(to_name),
-                    distance_m=float(rel.get("distance_m", 50.0)),
-                    duration_min=round(float(rel.get("distance_m", 50.0)) / 75.0, 1),
+                    distance_m=dist,
+                    duration_min=round(dist / 75.0, 1),
                     is_sheltered=True
                 ))
             elif rtype == "UNSHELTERED_WALK":
+                dist = float(rel.get("distance_m", 50.0))
                 steps.append(ItineraryStep(
                     step_type="WALK",
                     from_name=str(from_name),
                     to_name=str(to_name),
-                    distance_m=float(rel.get("distance_m", 50.0)),
-                    duration_min=round(float(rel.get("distance_m", 50.0)) / 75.0, 1),
+                    distance_m=dist,
+                    duration_min=round(dist / 75.0, 1),
                     is_sheltered=False
                 ))
             elif rtype == "TRANSIT_RIDE":
@@ -213,7 +280,7 @@ def search_transit_routes(req: RouteSearchRequest):
             base_travel_time=round(float(rec["base_travel_time"]), 1),
             sheltered_m=round(float(rec["sheltered_m"]), 1),
             unsheltered_m=round(float(rec["unsheltered_m"]), 1),
-            transfer_count=int(rec["transfer_count"]),
+            transfer_count=max(0, int(rec["transfer_count"])),
             lsd_leg_count=int(rec["lsd_leg_count"]),
             itinerary_nodes=[str(x) for x in rec["itinerary"]],
             steps=steps,

@@ -125,7 +125,7 @@ def save_route(r: RouteCreate):
                     cur.execute(
                         """
                         INSERT INTO saved_route_stop (route_id, stop_code, stop_order, leg_mode)
-                        VALUES (%s, %s, %s, 'TRANSIT')
+                        VALUES (%s, %s, %s, 'BUS')
                         ON CONFLICT DO NOTHING;
                         """,
                         (route_id, stop_code, idx)

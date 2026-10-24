@@ -26,6 +26,9 @@ dependencies = [
     "uvicorn[standard]>=0.54.0",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [project.scripts]
 transiq = "transiq:main"
 
