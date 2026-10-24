@@ -35,6 +35,15 @@ def get_sheltered_access(postal_code: str = "640183"):
                 for r in rows
             ]
 
+@router.post("/refresh_materialized_views")
+def refresh_materialized_views():
+    """Trigger CONCURRENT refresh of mv_sheltered_access."""
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT refresh_sheltered_access();")
+            conn.commit()
+    return {"status": "success", "refreshed": "mv_sheltered_access"}
+
 
 @router.get("/peak_congestion")
 def get_peak_congestion(limit: int = 15):

@@ -1,0 +1,618 @@
+[
+  {
+    "region": "Sembawang",
+    "postal_code": "757713",
+    "label": "SUN PLAZA (757713)",
+    "latitude": 1.448195,
+    "longitude": 103.819502
+  },
+  {
+    "region": "Sembawang",
+    "postal_code": "759775",
+    "label": "SEMBAWANG MRT STATION (NS11) (759775)",
+    "latitude": 1.449051,
+    "longitude": 103.820046
+  },
+  {
+    "region": "Sembawang",
+    "postal_code": "750133",
+    "label": "CANBERRA PLAZA (750133)",
+    "latitude": 1.443495,
+    "longitude": 103.830345
+  },
+  {
+    "region": "Sembawang",
+    "postal_code": "750501",
+    "label": "MONTREAL SPRING (750501)",
+    "latitude": 1.451597,
+    "longitude": 103.821373
+  },
+  {
+    "region": "Woodlands",
+    "postal_code": "738099",
+    "label": "CAUSEWAY POINT (738099)",
+    "latitude": 1.43607,
+    "longitude": 103.785982
+  },
+  {
+    "region": "Woodlands",
+    "postal_code": "730900",
+    "label": "WOODLANDS CIVIC CENTRE (730900)",
+    "latitude": 1.435018,
+    "longitude": 103.786931
+  },
+  {
+    "region": "Woodlands",
+    "postal_code": "737668",
+    "label": "WOODLANDS NORTH MRT STATION (TE1) (737668)",
+    "latitude": 1.448292,
+    "longitude": 103.785693
+  },
+  {
+    "region": "Woodlands",
+    "postal_code": "737719",
+    "label": "POLARIS @ WOODLANDS (737719)",
+    "latitude": 1.439917,
+    "longitude": 103.80898
+  },
+  {
+    "region": "Yishun",
+    "postal_code": "769098",
+    "label": "NORTHPOINT CITY (769098)",
+    "latitude": 1.429698,
+    "longitude": 103.835776
+  },
+  {
+    "region": "Yishun",
+    "postal_code": "769093",
+    "label": "YISHUN MRT STATION (NS13) (769093)",
+    "latitude": 1.429443,
+    "longitude": 103.835005
+  },
+  {
+    "region": "Yishun",
+    "postal_code": "769092",
+    "label": "KHATIB MRT STATION (NS14) (769092)",
+    "latitude": 1.417383,
+    "longitude": 103.83298
+  },
+  {
+    "region": "Yishun",
+    "postal_code": "760101",
+    "label": "101 YISHUN AVENUE 5 SINGAPORE 760101 (760101)",
+    "latitude": 1.430536,
+    "longitude": 103.827668
+  },
+  {
+    "region": "Choa Chu Kang",
+    "postal_code": "689812",
+    "label": "LOT ONE, SHOPPERS' MALL (689812)",
+    "latitude": 1.384975,
+    "longitude": 103.745012
+  },
+  {
+    "region": "Choa Chu Kang",
+    "postal_code": "689960",
+    "label": "CHOA CHU KANG MRT STATION (JS1) (689960)",
+    "latitude": 1.385368,
+    "longitude": 103.744085
+  },
+  {
+    "region": "Choa Chu Kang",
+    "postal_code": "689578",
+    "label": "YEWTEE POINT (689578)",
+    "latitude": 1.39697,
+    "longitude": 103.746443
+  },
+  {
+    "region": "Choa Chu Kang",
+    "postal_code": "680101",
+    "label": "101 TECK WHYE LANE SINGAPORE 680101 (680101)",
+    "latitude": 1.37789,
+    "longitude": 103.75424
+  },
+  {
+    "region": "Bukit Batok",
+    "postal_code": "658713",
+    "label": "WEST MALL (658713)",
+    "latitude": 1.350021,
+    "longitude": 103.749216
+  },
+  {
+    "region": "Bukit Batok",
+    "postal_code": "650631",
+    "label": "BUKIT BATOK BUS INTERCHANGE (650631)",
+    "latitude": 1.349719,
+    "longitude": 103.750969
+  },
+  {
+    "region": "Bukit Batok",
+    "postal_code": "659083",
+    "label": "BUKIT GOMBAK MRT STATION (NS3) (659083)",
+    "latitude": 1.358612,
+    "longitude": 103.751791
+  },
+  {
+    "region": "Bukit Batok",
+    "postal_code": "650101",
+    "label": "101 BUKIT BATOK WEST AVENUE 6 SINGAPORE 650101 (650101)",
+    "latitude": 1.346706,
+    "longitude": 103.746921
+  },
+  {
+    "region": "Jurong East",
+    "postal_code": "608532",
+    "label": "WESTGATE (608532)",
+    "latitude": 1.334158,
+    "longitude": 103.742766
+  },
+  {
+    "region": "Jurong East",
+    "postal_code": "609601",
+    "label": "IMM BUILDING (609601)",
+    "latitude": 1.334875,
+    "longitude": 103.746895
+  },
+  {
+    "region": "Jurong East",
+    "postal_code": "609081",
+    "label": "SCIENCE CENTRE SINGAPORE (609081)",
+    "latitude": 1.332839,
+    "longitude": 103.735821
+  },
+  {
+    "region": "Jurong East",
+    "postal_code": "608513",
+    "label": "JURONG EAST BUS INTERCHANGE (608513)",
+    "latitude": 1.331864,
+    "longitude": 103.740927
+  },
+  {
+    "region": "Jurong West",
+    "postal_code": "640638",
+    "label": "PIONEER MALL (640638)",
+    "latitude": 1.341692,
+    "longitude": 103.697175
+  },
+  {
+    "region": "Jurong West",
+    "postal_code": "640762",
+    "label": "GEK POH SHOPPING CENTRE (640762)",
+    "latitude": 1.348744,
+    "longitude": 103.697732
+  },
+  {
+    "region": "Jurong West",
+    "postal_code": "649040",
+    "label": "NANYANG COMMUNITY CLUB (649040)",
+    "latitude": 1.342428,
+    "longitude": 103.692435
+  },
+  {
+    "region": "Jurong West",
+    "postal_code": "640183",
+    "label": "BOON LAY GROVE (640183)",
+    "latitude": 1.349264,
+    "longitude": 103.709358
+  },
+  {
+    "region": "Boon Lay",
+    "postal_code": "648886",
+    "label": "JURONG POINT (648886)",
+    "latitude": 1.339453,
+    "longitude": 103.706685
+  },
+  {
+    "region": "Boon Lay",
+    "postal_code": "648330",
+    "label": "BOON LAY BUS INTERCHANGE (648330)",
+    "latitude": 1.339315,
+    "longitude": 103.705351
+  },
+  {
+    "region": "Boon Lay",
+    "postal_code": "640221",
+    "label": "BOON LAY SHOPPING CENTRE (640221)",
+    "latitude": 1.346336,
+    "longitude": 103.71243
+  },
+  {
+    "region": "Boon Lay",
+    "postal_code": "640207",
+    "label": "BOON LAY PLACE (640207)",
+    "latitude": 1.346586,
+    "longitude": 103.713568
+  },
+  {
+    "region": "Clementi",
+    "postal_code": "129588",
+    "label": "THE CLEMENTI MALL (129588)",
+    "latitude": 1.314896,
+    "longitude": 103.764423
+  },
+  {
+    "region": "Clementi",
+    "postal_code": "129905",
+    "label": "321 CLEMENTI (129905)",
+    "latitude": 1.312002,
+    "longitude": 103.764987
+  },
+  {
+    "region": "Clementi",
+    "postal_code": "129580",
+    "label": "CLEMENTI MRT STATION (EW23) (129580)",
+    "latitude": 1.315116,
+    "longitude": 103.765191
+  },
+  {
+    "region": "Clementi",
+    "postal_code": "129787",
+    "label": "KENT VALE (129787)",
+    "latitude": 1.30176,
+    "longitude": 103.769371
+  },
+  {
+    "region": "Bukit Timah",
+    "postal_code": "588177",
+    "label": "BEAUTY WORLD CENTRE (588177)",
+    "latitude": 1.342413,
+    "longitude": 103.776539
+  },
+  {
+    "region": "Bukit Timah",
+    "postal_code": "588996",
+    "label": "BUKIT TIMAH PLAZA (588996)",
+    "latitude": 1.338759,
+    "longitude": 103.7786
+  },
+  {
+    "region": "Bukit Timah",
+    "postal_code": "599987",
+    "label": "KING ALBERT PARK MRT STATION (DT6) (599987)",
+    "latitude": 1.335662,
+    "longitude": 103.783399
+  },
+  {
+    "region": "Bukit Timah",
+    "postal_code": "269784",
+    "label": "SIXTH AVENUE MRT STATION (DT7) (269784)",
+    "latitude": 1.330858,
+    "longitude": 103.796907
+  },
+  {
+    "region": "Queenstown",
+    "postal_code": "149053",
+    "label": "QUEENSWAY SHOPPING CENTRE (149053)",
+    "latitude": 1.287595,
+    "longitude": 103.803397
+  },
+  {
+    "region": "Queenstown",
+    "postal_code": "159953",
+    "label": "ANCHORPOINT SHOPPING CENTRE (159953)",
+    "latitude": 1.288615,
+    "longitude": 103.80501
+  },
+  {
+    "region": "Queenstown",
+    "postal_code": "149732",
+    "label": "QUEENSTOWN COMMUNITY CENTRE (149732)",
+    "latitude": 1.298963,
+    "longitude": 103.801487
+  },
+  {
+    "region": "Queenstown",
+    "postal_code": "149729",
+    "label": "QUEENSTOWN MRT STATION (EW19) (149729)",
+    "latitude": 1.294551,
+    "longitude": 103.806077
+  },
+  {
+    "region": "Tanglin",
+    "postal_code": "247933",
+    "label": "TANGLIN MALL (247933)",
+    "latitude": 1.304843,
+    "longitude": 103.823853
+  },
+  {
+    "region": "Tanglin",
+    "postal_code": "249679",
+    "label": "DEMPSEY CLUSTER (TANGLIN VILLAGE) (249679)",
+    "latitude": 1.306792,
+    "longitude": 103.810188
+  },
+  {
+    "region": "Tanglin",
+    "postal_code": "258511",
+    "label": "NAPIER MRT STATION (TE12) (258511)",
+    "latitude": 1.306782,
+    "longitude": 103.818957
+  },
+  {
+    "region": "Tanglin",
+    "postal_code": "248654",
+    "label": "ORCHARD BOULEVARD MRT STATION (TE13) (248654)",
+    "latitude": 1.302422,
+    "longitude": 103.823869
+  },
+  {
+    "region": "Bukit Merah",
+    "postal_code": "168732",
+    "label": "TIONG BAHRU PLAZA (168732)",
+    "latitude": 1.286459,
+    "longitude": 103.827015
+  },
+  {
+    "region": "Bukit Merah",
+    "postal_code": "159840",
+    "label": "BUKIT MERAH BUS INTERCHANGE (159840)",
+    "latitude": 1.28204,
+    "longitude": 103.81721
+  },
+  {
+    "region": "Bukit Merah",
+    "postal_code": "159471",
+    "label": "E-CENTRE @ REDHILL (159471)",
+    "latitude": 1.285034,
+    "longitude": 103.811609
+  },
+  {
+    "region": "Bukit Merah",
+    "postal_code": "159682",
+    "label": "HENDERSON COMMUNITY CLUB (159682)",
+    "latitude": 1.28601,
+    "longitude": 103.823315
+  },
+  {
+    "region": "Outram & Downtown",
+    "postal_code": "048618",
+    "label": "RAFFLES PLACE MRT STATION (EW14 / NS26) (048618)",
+    "latitude": 1.284126,
+    "longitude": 103.851462
+  },
+  {
+    "region": "Outram & Downtown",
+    "postal_code": "059413",
+    "label": "CHINATOWN POINT (059413)",
+    "latitude": 1.284999,
+    "longitude": 103.844697
+  },
+  {
+    "region": "Outram & Downtown",
+    "postal_code": "018974",
+    "label": "MARINA BAY SANDS (ARTSCIENCE MUSEUM) (018974)",
+    "latitude": 1.286224,
+    "longitude": 103.859271
+  },
+  {
+    "region": "Outram & Downtown",
+    "postal_code": "169037",
+    "label": "OUTRAM PARK MRT STATION (EW16) (169037)",
+    "latitude": 1.281405,
+    "longitude": 103.839131
+  },
+  {
+    "region": "Hougang",
+    "postal_code": "538766",
+    "label": "HOUGANG MALL (538766)",
+    "latitude": 1.372491,
+    "longitude": 103.893774
+  },
+  {
+    "region": "Hougang",
+    "postal_code": "538692",
+    "label": "HOUGANG 1 (538692)",
+    "latitude": 1.375715,
+    "longitude": 103.879472
+  },
+  {
+    "region": "Hougang",
+    "postal_code": "538757",
+    "label": "HOUGANG CENTRAL BUS INTERCHANGE (538757)",
+    "latitude": 1.370895,
+    "longitude": 103.893157
+  },
+  {
+    "region": "Hougang",
+    "postal_code": "530101",
+    "label": "101 HOUGANG AVENUE 1 SINGAPORE 530101 (530101)",
+    "latitude": 1.354937,
+    "longitude": 103.891361
+  },
+  {
+    "region": "Sengkang",
+    "postal_code": "545078",
+    "label": "COMPASS ONE (545078)",
+    "latitude": 1.392053,
+    "longitude": 103.895071
+  },
+  {
+    "region": "Sengkang",
+    "postal_code": "544692",
+    "label": "SENGKANG GRAND MALL (544692)",
+    "latitude": 1.382982,
+    "longitude": 103.892721
+  },
+  {
+    "region": "Sengkang",
+    "postal_code": "545082",
+    "label": "RIVERVALE MALL (545082)",
+    "latitude": 1.392198,
+    "longitude": 103.904472
+  },
+  {
+    "region": "Sengkang",
+    "postal_code": "545062",
+    "label": "SENGKANG MRT STATION (NE16) (545062)",
+    "latitude": 1.391695,
+    "longitude": 103.895485
+  },
+  {
+    "region": "Punggol",
+    "postal_code": "828761",
+    "label": "WATERWAY POINT (828761)",
+    "latitude": 1.406485,
+    "longitude": 103.902106
+  },
+  {
+    "region": "Punggol",
+    "postal_code": "828629",
+    "label": "ONE PUNGGOL (828629)",
+    "latitude": 1.408728,
+    "longitude": 103.905155
+  },
+  {
+    "region": "Punggol",
+    "postal_code": "820681",
+    "label": "OASIS TERRACES (820681)",
+    "latitude": 1.40278,
+    "longitude": 103.913215
+  },
+  {
+    "region": "Punggol",
+    "postal_code": "820407",
+    "label": "NORTHSHORE PLAZA I (820407)",
+    "latitude": 1.416758,
+    "longitude": 103.902077
+  },
+  {
+    "region": "Pasir Ris",
+    "postal_code": "518457",
+    "label": "WHITE SANDS (518457)",
+    "latitude": 1.37245,
+    "longitude": 103.949716
+  },
+  {
+    "region": "Pasir Ris",
+    "postal_code": "519599",
+    "label": "COSTA SANDS RESORT (DOWNTOWN EAST) (519599)",
+    "latitude": 1.379127,
+    "longitude": 103.955445
+  },
+  {
+    "region": "Pasir Ris",
+    "postal_code": "510734",
+    "label": "PASIR RIS WEST PLAZA (510734)",
+    "latitude": 1.379768,
+    "longitude": 103.936208
+  },
+  {
+    "region": "Pasir Ris",
+    "postal_code": "519969",
+    "label": "PASIR RIS EAST MRT STATION (CR4) (519969)",
+    "latitude": 1.367129,
+    "longitude": 103.960557
+  },
+  {
+    "region": "Tampines",
+    "postal_code": "529510",
+    "label": "TAMPINES MALL (529510)",
+    "latitude": 1.352527,
+    "longitude": 103.944699
+  },
+  {
+    "region": "Tampines",
+    "postal_code": "529540",
+    "label": "TAMPINES PLAZA 1 (529540)",
+    "latitude": 1.352702,
+    "longitude": 103.942904
+  },
+  {
+    "region": "Tampines",
+    "postal_code": "528523",
+    "label": "OUR TAMPINES HUB (528523)",
+    "latitude": 1.353134,
+    "longitude": 103.940408
+  },
+  {
+    "region": "Tampines",
+    "postal_code": "529623",
+    "label": "TAMPINES EAST MRT STATION (DT33) (529623)",
+    "latitude": 1.356191,
+    "longitude": 103.954634
+  },
+  {
+    "region": "Paya Lebar",
+    "postal_code": "409057",
+    "label": "PAYA LEBAR QUARTER (409057)",
+    "latitude": 1.317709,
+    "longitude": 103.893415
+  },
+  {
+    "region": "Paya Lebar",
+    "postal_code": "409051",
+    "label": "PAYA LEBAR SQUARE (409051)",
+    "latitude": 1.318815,
+    "longitude": 103.892581
+  },
+  {
+    "region": "Paya Lebar",
+    "postal_code": "408600",
+    "label": "SINGAPORE POST CENTRE (408600)",
+    "latitude": 1.318997,
+    "longitude": 103.894895
+  },
+  {
+    "region": "Paya Lebar",
+    "postal_code": "404002",
+    "label": "SRI GEYLANG SERAI (404002)",
+    "latitude": 1.317405,
+    "longitude": 103.897775
+  },
+  {
+    "region": "Bedok",
+    "postal_code": "467360",
+    "label": "BEDOK MALL (467360)",
+    "latitude": 1.324736,
+    "longitude": 103.929256
+  },
+  {
+    "region": "Bedok",
+    "postal_code": "469662",
+    "label": "HEARTBEAT @ BEDOK (469662)",
+    "latitude": 1.326864,
+    "longitude": 103.93213
+  },
+  {
+    "region": "Bedok",
+    "postal_code": "467360",
+    "label": "BEDOK INTEGRATED TRANSPORT HUB (467360)",
+    "latitude": 1.324736,
+    "longitude": 103.929256
+  },
+  {
+    "region": "Bedok",
+    "postal_code": "467347",
+    "label": "BEDOK MRT STATION (EW5) (467347)",
+    "latitude": 1.32398,
+    "longitude": 103.929984
+  },
+  {
+    "region": "Geylang",
+    "postal_code": "409286",
+    "label": "CITY PLAZA (409286)",
+    "latitude": 1.314787,
+    "longitude": 103.893472
+  },
+  {
+    "region": "Geylang",
+    "postal_code": "437157",
+    "label": "KINEX (437157)",
+    "latitude": 1.314618,
+    "longitude": 103.894738
+  },
+  {
+    "region": "Geylang",
+    "postal_code": "388310",
+    "label": "ALJUNIED MRT STATION (EW9) (388310)",
+    "latitude": 1.316433,
+    "longitude": 103.882906
+  },
+  {
+    "region": "Geylang",
+    "postal_code": "408528",
+    "label": "WISMA GEYLANG SERAI (408528)",
+    "latitude": 1.316494,
+    "longitude": 103.896788
+  }
+]

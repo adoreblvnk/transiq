@@ -1,0 +1,74 @@
+[
+  {
+    "postal_code": "757713",
+    "label": "SUN PLAZA (757713)",
+    "latitude": 1.448195,
+    "longitude": 103.819502
+  },
+  {
+    "postal_code": "759775",
+    "label": "SEMBAWANG MRT STATION (NS11) (759775)",
+    "latitude": 1.449051,
+    "longitude": 103.820046
+  },
+  {
+    "postal_code": "738343",
+    "label": "WOODLANDS MRT STATION (NS9) (738343)",
+    "latitude": 1.43682,
+    "longitude": 103.786067
+  },
+  {
+    "postal_code": "608549",
+    "label": "JEM (608549)",
+    "latitude": 1.333293,
+    "longitude": 103.743279
+  },
+  {
+    "postal_code": "649846",
+    "label": "BOON LAY MRT STATION (EW27) (649846)",
+    "latitude": 1.338604,
+    "longitude": 103.706065
+  },
+  {
+    "postal_code": "588996",
+    "label": "BUKIT TIMAH PLAZA (588996)",
+    "latitude": 1.338759,
+    "longitude": 103.7786
+  },
+  {
+    "postal_code": "168732",
+    "label": "TIONG BAHRU PLAZA (168732)",
+    "latitude": 1.286459,
+    "longitude": 103.827015
+  },
+  {
+    "postal_code": "018974",
+    "label": "MARINA BAY SANDS (ARTSCIENCE MUSEUM) (018974)",
+    "latitude": 1.286224,
+    "longitude": 103.859271
+  },
+  {
+    "postal_code": "545062",
+    "label": "SENGKANG MRT STATION (NE16) (545062)",
+    "latitude": 1.391695,
+    "longitude": 103.895485
+  },
+  {
+    "postal_code": "519599",
+    "label": "COSTA SANDS RESORT (DOWNTOWN EAST) (519599)",
+    "latitude": 1.379127,
+    "longitude": 103.955445
+  },
+  {
+    "postal_code": "529623",
+    "label": "TAMPINES EAST MRT STATION (DT33) (529623)",
+    "latitude": 1.356191,
+    "longitude": 103.954634
+  },
+  {
+    "postal_code": "469662",
+    "label": "HEARTBEAT @ BEDOK (469662)",
+    "latitude": 1.326864,
+    "longitude": 103.93213
+  }
+]

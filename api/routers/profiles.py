@@ -103,6 +103,7 @@ def save_route(r: RouteCreate):
     with get_pg_connection() as conn:
         with conn.cursor() as cur:
             try:
+                cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;")
                 cur.execute(
                     """
                     INSERT INTO saved_route (route_name, origin_postal, dest_postal, preferred_mode)

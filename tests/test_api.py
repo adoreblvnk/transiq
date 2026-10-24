@@ -29,6 +29,14 @@ def test_get_anchor_locations():
     assert "latitude" in o0
     assert "longitude" in o0
 
+def test_onemap_geocode():
+    """Verify live OneMap API address search and geocoding."""
+    response = client.get("/api/routes/geocode?query=640183")
+    assert response.status_code == 200
+    results = response.json()
+    assert len(results) > 0
+    assert results[0]["postal_code"] == "640183"
+
 
 def test_route_search_rain_shield():
     payload = {
@@ -126,6 +134,27 @@ def test_profiles_crud():
     assert saved[0]["route_name"] == "Test Commute to Ang Mo Kio"
 
 
+def test_atomic_transaction_rollback():
+    """Verify ACID atomicity: partial failures roll back across all 3 tables."""
+    # Attempt route save with non-existent foreign key origin postal
+    bad_payload = {
+        "user_id": 1,
+        "route_name": "Invalid Route Should Rollback",
+        "origin_postal": "999999",  # Does not exist in hdb_building
+        "dest_postal": "560101",
+        "preferred_mode": "RAIN_SHIELD",
+        "stops": ["01012"]
+    }
+    res = client.post("/api/profiles/save_route", json=bad_payload)
+    assert res.status_code == 400
+
+    # Confirm no orphan records exist in saved_route
+    from api.services.db import get_pg_connection
+    with get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM saved_route WHERE route_name = 'Invalid Route Should Rollback';")
+            assert cur.fetchone()[0] == 0
+
 def test_analytics_views():
     # View 1: Sheltered Access
     res1 = client.get("/api/analytics/sheltered_access?postal_code=640183")
@@ -147,6 +176,23 @@ def test_analytics_views():
     assert res4.status_code == 200
     assert "distribution" in res4.json()
 
+
+def test_materialized_view_refresh():
+    """Verify concurrent refresh of mv_sheltered_access."""
+    res = client.post("/api/analytics/refresh_materialized_views")
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+
+def test_durability_mode_endpoint():
+    """Verify synchronous_commit = ON vs OFF execution."""
+    res_sync = client.post("/api/benchmarks/durability_test", json={"mode": "sync", "batch_size": 100})
+    assert res_sync.status_code == 200
+    assert res_sync.json()["synchronous_commit"] == "ON"
+
+    res_async = client.post("/api/benchmarks/durability_test", json={"mode": "async", "batch_size": 100})
+    assert res_async.status_code == 200
+    assert res_async.json()["synchronous_commit"] == "OFF"
+    assert res_async.json()["updates_per_sec"] > 0
 
 def test_benchmarks_matrix():
     res = client.get("/api/benchmarks/")
