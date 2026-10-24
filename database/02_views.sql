@@ -1,14 +1,12 @@
--- View 1: Sheltered Walkway Access around HDBs
+-- View 1: Sheltered Walkway Access around HDBs (Optimized with PostGIS GiST Index)
 CREATE OR REPLACE VIEW v_sheltered_access AS
 SELECT
     h.postal_code, h.block_no, h.town,
     l.linkway_id, l.is_barrier_free, l.roof_condition,
     lsa.walk_distance_m, lsa.is_sheltered
 FROM hdb_building h
-JOIN linkway_stop_access lsa ON lsa.stop_code IN (
-    SELECT stop_code FROM transit_stop
-    WHERE ST_DWithin(h.geom::geography, geom::geography, 500)
-)
+JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0045)
+JOIN linkway_stop_access lsa ON lsa.stop_code = ts.stop_code
 JOIN covered_linkway l ON l.linkway_id = lsa.linkway_id;
 
 -- View 2: Peak Hour Congestion with Window Functions

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS hdb_building (
     CONSTRAINT chk_lon_range  CHECK (longitude BETWEEN 103.0 AND 104.5)
 );
 CREATE INDEX IF NOT EXISTS idx_hdb_geom ON hdb_building USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_hdb_geog ON hdb_building USING GIST ((geom::geography));
 
 -- 2. Covered Linkways
 CREATE TABLE IF NOT EXISTS covered_linkway (
@@ -23,9 +24,10 @@ CREATE TABLE IF NOT EXISTS covered_linkway (
     is_barrier_free   BOOLEAN DEFAULT TRUE,
     roof_condition    VARCHAR(20) DEFAULT 'GOOD'
         CHECK (roof_condition IN ('GOOD', 'DAMAGED', 'UNDER_MAINTENANCE')),
-    geom              GEOMETRY(LineString, 4326) NOT NULL
+    geom              GEOMETRY(Geometry, 4326) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_linkway_geom ON covered_linkway USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_linkway_geog ON covered_linkway USING GIST ((geom::geography));
 
 -- 3. Transit Stops
 CREATE TABLE IF NOT EXISTS transit_stop (
@@ -40,12 +42,13 @@ CREATE TABLE IF NOT EXISTS transit_stop (
     geom            GEOMETRY(Point, 4326) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_transit_stop_geom ON transit_stop USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_transit_stop_geog ON transit_stop USING GIST ((geom::geography));
 
 -- 4. Transit Services
 CREATE TABLE IF NOT EXISTS transit_service (
     service_no  VARCHAR(10) PRIMARY KEY,
     operator    VARCHAR(20) NOT NULL
-        CHECK (operator IN ('SBST', 'SMRT', 'Tower', 'SLRT')),
+        CHECK (operator IN ('SBST', 'SMRT', 'Tower', 'TTS', 'GAS', 'SLRT')),
     mode        VARCHAR(5)  NOT NULL
         CHECK (mode IN ('BUS', 'MRT', 'LRT'))
 );
@@ -61,7 +64,7 @@ CREATE TABLE IF NOT EXISTS transit_route_segment (
     to_stop_code        VARCHAR(20) NOT NULL
         REFERENCES transit_stop(stop_code) ON DELETE CASCADE,
     est_travel_time_min NUMERIC(4,1) NOT NULL CHECK (est_travel_time_min > 0),
-    distance_km         NUMERIC(5,2) NOT NULL CHECK (distance_km > 0),
+    distance_km         NUMERIC(5,2) NOT NULL CHECK (distance_km >= 0),
     PRIMARY KEY (service_no, direction, stop_sequence)
 );
 CREATE INDEX IF NOT EXISTS idx_route_seg_from ON transit_route_segment (from_stop_code);
