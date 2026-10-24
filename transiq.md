@@ -378,13 +378,13 @@ WHERE ts.stop_type = 'MRT_EXIT' AND lsa.is_sheltered = TRUE;
 ```sql
 WITH RECURSIVE TransitPath AS (
     SELECT from_stop_code, to_stop_code, service_no,
-           est_travel_time_min AS total_time, 0 AS transfers,
-           ARRAY[from_stop_code, to_stop_code] AS visited_stops
+           est_travel_time_min::numeric AS total_time, 0 AS transfers,
+           ARRAY[from_stop_code, to_stop_code]::varchar[] AS visited_stops
     FROM transit_route_segment
     WHERE from_stop_code = '28009'
     UNION ALL
     SELECT tp.from_stop_code, s.to_stop_code, s.service_no,
-           tp.total_time + s.est_travel_time_min,
+           (tp.total_time + s.est_travel_time_min)::numeric,
            tp.transfers + CASE WHEN tp.service_no = s.service_no THEN 0 ELSE 1 END,
            tp.visited_stops || s.to_stop_code
     FROM TransitPath tp
