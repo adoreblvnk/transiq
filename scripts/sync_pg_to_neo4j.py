@@ -127,15 +127,25 @@ def sync_nodes(pg_conn, session):
                 batch=batch,
             )
 
-        # 4. Commercial Buildings (from buildings.json)
+        # 4. Commercial Buildings (Key Hubs + from buildings.json)
+        anchor_commercial = [
+            {"postal_code": "648886", "name": "Jurong Point Mall", "lat": 1.3397, "lon": 103.7067},
+            {"postal_code": "048616", "name": "Raffles Place CBD Tower", "lat": 1.2840, "lon": 103.8515},
+            {"postal_code": "238839", "name": "Orchard Central Hub", "lat": 1.3008, "lon": 103.8398},
+            {"postal_code": "529536", "name": "Tampines 1 Shopping Mall", "lat": 1.3542, "lon": 103.9452},
+            {"postal_code": "738099", "name": "Woodlands Civic Centre", "lat": 1.4360, "lon": 103.7865},
+            {"postal_code": "579837", "name": "Junction 8 Bishan", "lat": 1.3506, "lon": 103.8488},
+            {"postal_code": "138683", "name": "Fusionopolis One-North", "lat": 1.2989, "lon": 103.7876},
+        ]
+        comm_list = list(anchor_commercial)
+        seen_postals = {c["postal_code"] for c in comm_list}
+
         bldgs_file = ROOT_DIR / "data" / "raw" / "buildings.json"
         if bldgs_file.exists():
             with open(bldgs_file) as f:
                 all_bldgs = json.load(f)
 
             comm_keywords = ["MALL", "CENTRE", "TOWER", "BUILDING", "PLAZA", "COMPLEX", "POINT", "HUB"]
-            comm_list = []
-            seen_postals = set()
             for b in all_bldgs:
                 name = str(b.get("BUILDING", "")).strip().upper()
                 postal = str(b.get("POSTAL", "")).strip().zfill(6)
@@ -154,18 +164,18 @@ def sync_nodes(pg_conn, session):
                             if len(comm_list) >= 2000:
                                 break
 
-            print(f"Projecting {len(comm_list)} CommercialBuilding nodes...")
-            for i in range(0, len(comm_list), BATCH_SIZE):
-                batch = comm_list[i:i + BATCH_SIZE]
-                session.run(
-                    """
-                    UNWIND $batch AS row
-                    MERGE (c:CommercialBuilding {postal_code: row.postal_code})
-                    SET c.name = row.name, c.lat = row.lat, c.lon = row.lon,
-                        c.location = point({latitude: row.lat, longitude: row.lon})
-                    """,
-                    batch=batch,
-                )
+        print(f"Projecting {len(comm_list)} CommercialBuilding nodes...")
+        for i in range(0, len(comm_list), BATCH_SIZE):
+            batch = comm_list[i:i + BATCH_SIZE]
+            session.run(
+                """
+                UNWIND $batch AS row
+                MERGE (c:CommercialBuilding {postal_code: row.postal_code})
+                SET c.name = row.name, c.lat = row.lat, c.lon = row.lon,
+                    c.location = point({latitude: row.lat, longitude: row.lon})
+                """,
+                batch=batch,
+            )
 
 
 def sync_transit_rides(pg_conn, session):
@@ -266,6 +276,43 @@ def sync_station_transfers(session):
             batch=batch,
         )
 
+    # Connect MRT Exits to Station Platform Codes
+    print("Projecting Exit <-> Platform STATION_TRANSFER edges...")
+    from scripts.mrt_data import MRT_LINES, get_station_exits_map
+    exit_platform_transfers = []
+    exits_map = get_station_exits_map()
+    for line_code, line_data in MRT_LINES.items():
+        for stn_code, stn_name in line_data["stations"]:
+            exits = exits_map.get(stn_name.upper(), [])
+            for e in exits:
+                exit_platform_transfers.append({
+                    "from_code": e["stop_code"],
+                    "to_code": stn_code,
+                    "duration_min": 1.5,
+                    "dist_m": 80.0,
+                })
+                exit_platform_transfers.append({
+                    "from_code": stn_code,
+                    "to_code": e["stop_code"],
+                    "duration_min": 1.5,
+                    "dist_m": 80.0,
+                })
+
+    for i in range(0, len(exit_platform_transfers), BATCH_SIZE):
+        batch = exit_platform_transfers[i:i + BATCH_SIZE]
+        session.run(
+            """
+            UNWIND $batch AS row
+            MATCH (from:MRTExit {id: row.from_code})
+            MATCH (to:MRTExit {id: row.to_code})
+            MERGE (from)-[r:STATION_TRANSFER]->(to)
+            SET r.walking_time_min = row.duration_min,
+                r.is_sheltered = true,
+                r.distance_m = row.dist_m,
+                r.escalator_count = 1
+            """,
+            batch=batch,
+        )
 
 def sync_walkway_connections(pg_conn, session):
     print("\n--- Projecting SHELTERED_WALK & UNSHELTERED_WALK Edges ---")
@@ -345,16 +392,61 @@ def sync_walkway_connections(pg_conn, session):
                 batch=batch,
             )
 
-        # C. Sheltered Walkways (CommercialBuilding to MRT Exits)
+        # C. BusStop <-> MRTExit interchange walkways (within 150m)
+        print("Fetching BusStop <-> MRTExit interchange links...")
+        cur.execute(
+            """
+            SELECT DISTINCT
+                bs.stop_code AS bus_stop,
+                me.stop_code AS mrt_exit,
+                GREATEST(10.0, ROUND(ST_Distance(bs.geom::geography, me.geom::geography)::numeric, 1)) AS distance_m
+            FROM transit_stop bs
+            JOIN transit_stop me ON ST_DWithin(bs.geom, me.geom, 0.0015)
+            WHERE bs.stop_type = 'BUS_STOP' AND me.stop_type = 'MRT_EXIT';
+            """
+        )
+        interchange_links = [
+            {"bus_stop": r[0], "mrt_exit": r[1], "dist": float(r[2])}
+            for r in cur.fetchall()
+        ]
+        print(f"  Found {len(interchange_links)} BusStop <-> MRTExit interchange links.")
+        for i in range(0, len(interchange_links), BATCH_SIZE):
+            batch = interchange_links[i:i + BATCH_SIZE]
+            session.run(
+                """
+                UNWIND $batch AS row
+                MATCH (b:BusStop {code: row.bus_stop})
+                MATCH (m:MRTExit {id: row.mrt_exit})
+                MERGE (b)-[r1:SHELTERED_WALK]->(m)
+                SET r1.distance_m = row.dist, r1.is_covered = true, r1.has_ramp = true, r1.barrier_free = true
+                MERGE (m)-[r2:SHELTERED_WALK]->(b)
+                SET r2.distance_m = row.dist, r2.is_covered = true, r2.has_ramp = true, r2.barrier_free = true
+                """,
+                batch=batch,
+            )
+
+        # D. Sheltered Walkways (CommercialBuilding to MRT Exits and Bus Stops)
         session.run(
             """
             MATCH (c:CommercialBuilding), (m:MRTExit)
-            WHERE point.distance(c.location, m.location) <= 300
+            WHERE point.distance(c.location, m.location) <= 450
             MERGE (m)-[r1:SHELTERED_WALK]->(c)
             SET r1.distance_m = round(point.distance(c.location, m.location)),
                 r1.is_covered = true, r1.has_ramp = true, r1.barrier_free = true
             MERGE (c)-[r2:SHELTERED_WALK]->(m)
             SET r2.distance_m = round(point.distance(c.location, m.location)),
+                r2.is_covered = true, r2.has_ramp = true, r2.barrier_free = true
+            """
+        )
+        session.run(
+            """
+            MATCH (c:CommercialBuilding), (b:BusStop)
+            WHERE point.distance(c.location, b.location) <= 350
+            MERGE (b)-[r1:SHELTERED_WALK]->(c)
+            SET r1.distance_m = round(point.distance(c.location, b.location)),
+                r1.is_covered = true, r1.has_ramp = true, r1.barrier_free = true
+            MERGE (c)-[r2:SHELTERED_WALK]->(b)
+            SET r2.distance_m = round(point.distance(c.location, b.location)),
                 r2.is_covered = true, r2.has_ramp = true, r2.barrier_free = true
             """
         )

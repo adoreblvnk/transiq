@@ -34,14 +34,14 @@ LIMIT 10;
 
 -- 3. Set Operation INTERSECT: Multi-Modal Sheltered Interchanges
 -- Proves: Set-theoretic intersection between bus stops and MRT exits sharing sheltered walkway connections.
-SELECT lsa.stop_code
+SELECT lsa.linkway_id
 FROM linkway_stop_access lsa
 JOIN transit_stop ts ON lsa.stop_code = ts.stop_code
 WHERE ts.stop_type = 'BUS_STOP' AND lsa.is_sheltered = TRUE
 
 INTERSECT
 
-SELECT lsa.stop_code
+SELECT lsa.linkway_id
 FROM linkway_stop_access lsa
 JOIN transit_stop ts ON lsa.stop_code = ts.stop_code
 WHERE ts.stop_type = 'MRT_EXIT' AND lsa.is_sheltered = TRUE;
@@ -50,8 +50,8 @@ WHERE ts.stop_type = 'MRT_EXIT' AND lsa.is_sheltered = TRUE;
 -- Proves: Explores multi-hop transit paths with loop detection, tracking accumulated time and transfers.
 WITH RECURSIVE TransitPath AS (
     SELECT from_stop_code, to_stop_code, service_no,
-           est_travel_time_min AS total_time, 0 AS transfers,
-           ARRAY[from_stop_code, to_stop_code] AS visited_stops
+           est_travel_time_min::numeric AS total_time, 0 AS transfers,
+           ARRAY[from_stop_code::varchar, to_stop_code::varchar]::varchar[] AS visited_stops
     FROM transit_route_segment
     WHERE from_stop_code = '28009'
     UNION ALL
@@ -62,7 +62,7 @@ WITH RECURSIVE TransitPath AS (
     FROM TransitPath tp
     JOIN transit_route_segment s ON tp.to_stop_code = s.from_stop_code
     WHERE NOT (s.to_stop_code = ANY(tp.visited_stops))
-      AND tp.transfers <= 2
+      AND tp.transfers <= 1
       AND tp.total_time <= 60
 )
 SELECT * FROM TransitPath

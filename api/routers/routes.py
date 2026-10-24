@@ -169,14 +169,17 @@ def search_transit_routes(req: RouteSearchRequest):
 
     MATCH (start)-[w1:SHELTERED_WALK|UNSHELTERED_WALK]->(s1)
     WHERE (s1:BusStop OR s1:MRTExit) AND ($strict_mode = false OR type(w1) = 'SHELTERED_WALK')
+    WITH start, dest, s1, w1 ORDER BY w1.distance_m ASC LIMIT 2
+
     MATCH (s2)-[w2:SHELTERED_WALK|UNSHELTERED_WALK]->(dest)
     WHERE (s2:BusStop OR s2:MRTExit) AND ($strict_mode = false OR type(w2) = 'SHELTERED_WALK')
+    WITH start, dest, s1, w1, s2, w2 ORDER BY w2.distance_m ASC LIMIT 4
 
-    MATCH p = shortestPath((s1)-[:TRANSIT_RIDE|STATION_TRANSFER*..25]->(s2))
-    WHERE ($strict_mode = false OR ALL(r IN relationships(p) WHERE type(r) <> 'TRANSIT_RIDE' OR r.live_load <> 'LSD'))
+    MATCH p = shortestPath((s1)-[:TRANSIT_RIDE|STATION_TRANSFER*..20]->(s2))
 
     WITH start, dest, w1, p, w2,
          [r IN relationships(p) WHERE type(r) = 'TRANSIT_RIDE'] AS transit_legs
+    WHERE ($strict_mode = false OR ALL(r IN transit_legs WHERE r.live_load <> 'LSD'))
     WITH start, dest, w1, p, w2, transit_legs,
          reduce(t = 0.0, r IN transit_legs | t + r.avg_duration_min) AS base_travel_time,
          (CASE WHEN type(w1) = 'UNSHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
@@ -205,15 +208,28 @@ def search_transit_routes(req: RouteSearchRequest):
 
     records = []
     with get_neo4j_session() as session:
-        # Try local routes first
-        local_res = list(session.run(cypher_local, params))
-        if local_res:
-            records.extend(local_res)
-        else:
-            # Fall back to long-distance shortestPath
+        # Spatial gate: check direct distance between origin and destination
+        dist_res = session.run(
+            """
+            MATCH (start {postal_code: $origin_postal})
+            MATCH (dest {postal_code: $dest_postal})
+            RETURN point.distance(start.location, dest.location) AS dist_m
+            LIMIT 1
+            """,
+            params
+        ).single()
+        dist_m = float(dist_res["dist_m"]) if dist_res and dist_res["dist_m"] is not None else 10000.0
+
+        # For short journeys (<= 3.5km), try local transit hops first
+        if dist_m <= 3500.0:
+            local_res = list(session.run(cypher_local, params))
+            if local_res:
+                records.extend(local_res)
+
+        # For cross-town journeys or if no local hops found, use long-distance shortestPath
+        if not records:
             long_res = list(session.run(cypher_long, params))
             records.extend(long_res)
-
     results = []
     for idx, rec in enumerate(records, 1):
         node_objs = rec["node_objs"]

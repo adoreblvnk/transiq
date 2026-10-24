@@ -2,36 +2,36 @@
   {
     "pair": 1,
     "name": "Unsheltered Bus Stops",
-    "time_a": 14.327,
-    "time_b": 8.032,
-    "speedup": 1.7837400398406373
+    "time_a": 16.065,
+    "time_b": 9.342,
+    "speedup": 1.7196531791907514
   },
   {
     "pair": 2,
     "name": "Sheltered Interchanges",
-    "time_a": 4.244,
-    "time_b": 4.033,
-    "speedup": 1.0523183734192907
+    "time_a": 4.457,
+    "time_b": 3.874,
+    "speedup": 1.1504904491481671
   },
   {
     "pair": 3,
     "name": "Peak Congestion Ranking",
-    "time_a": 1.9,
-    "time_b": 0.458,
-    "speedup": 4.148471615720523
+    "time_a": 1.534,
+    "time_b": 0.454,
+    "speedup": 3.3788546255506606
   },
   {
     "pair": 4,
     "name": "Proximity to Linkway",
-    "time_a": 94.867,
-    "time_b": 0.197,
-    "speedup": 481.55837563451774
+    "time_a": 78.31,
+    "time_b": 0.114,
+    "speedup": 686.9298245614035
   },
   {
     "pair": 5,
     "name": "Multi-Hop Transit Route",
-    "time_sql": 219.6,
-    "time_neo4j": 22.179048974066973,
-    "speedup": 9.901236083511472
+    "time_sql": 219.256,
+    "time_neo4j": 17.8470800165087,
+    "speedup": 12.285258977781595
   }
 ]

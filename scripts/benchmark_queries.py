@@ -94,12 +94,12 @@ def benchmark_pair_2(conn):
 
     # Formulation A: INTERSECT set operation
     q_a = """
-    SELECT lsa.stop_code
+    SELECT lsa.linkway_id
     FROM linkway_stop_access lsa
     JOIN transit_stop ts ON lsa.stop_code = ts.stop_code
     WHERE ts.stop_type = 'BUS_STOP' AND lsa.is_sheltered = TRUE
     INTERSECT
-    SELECT lsa.stop_code
+    SELECT lsa.linkway_id
     FROM linkway_stop_access lsa
     JOIN transit_stop ts ON lsa.stop_code = ts.stop_code
     WHERE ts.stop_type = 'MRT_EXIT' AND lsa.is_sheltered = TRUE;
@@ -109,7 +109,7 @@ def benchmark_pair_2(conn):
 
     # Formulation B: INNER JOIN on composite keys
     q_b = """
-    SELECT DISTINCT b.stop_code
+    SELECT DISTINCT b.linkway_id
     FROM linkway_stop_access b
     JOIN transit_stop ts_b ON b.stop_code = ts_b.stop_code AND ts_b.stop_type = 'BUS_STOP'
     JOIN linkway_stop_access m ON b.linkway_id = m.linkway_id
