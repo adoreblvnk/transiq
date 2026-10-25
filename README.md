@@ -138,10 +138,18 @@ To fulfill module requirements on execution plan optimization, TRANSIQ benchmark
 
 ## 7. Quickstart Guide
 
-### Prerequisites
-- Linux / macOS / Windows WSL2
-- Python 3.14 (managed via `uv`)
-- Docker & Docker Compose
+### Supported Environments & Prerequisites
+TRANSIQ is tested and supported exclusively on:
+1. **Apple Silicon Mac:** macOS on Apple M-Series chips (M1 / M2 / M3 / M4, ARM64) with Docker Desktop.
+2. **Windows 10 / 11 PC:** Intel or AMD x86_64 (AMD64) with Docker Desktop (WSL2 backend enabled).
+
+**Required Tools:**
+- **Docker Desktop:** Installed and running (Rosetta 2 enabled on Mac; WSL2 backend enabled on Windows).
+- **Python Package Manager (`uv`):**
+  - **macOS (Terminal):** `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - **Windows (PowerShell):** `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+---
 
 ### 1. Clone & Set Up Environment
 ```bash
@@ -174,38 +182,90 @@ uv run python scripts/sync_pg_to_neo4j.py
 uv run python scripts/benchmark_queries.py
 ```
 
-### 4. Run Verification Suite
+### 4. Run Verification & Test Suites
 ```bash
-# Run comprehensive pytest suite (9 tests)
+# Run automated pytest suite (12 tests covering CRUD, atomic transactions & views)
 uv run pytest tests/test_api.py -v
 
-# Run full system smoke verification
+# Run full system smoke verification across all 12 tables & Neo4j topology
 uv run python scripts/smoke_verify.py
+
+# Run native pgbench concurrency benchmarks:
+bash scripts/run_pgbench.sh      # macOS (Apple Silicon Terminal)
+.\scripts\run_pgbench.ps1       # Windows (PowerShell)
+
+# Run statistical hyperfine benchmarks across query formulations
+bash scripts/run_hyperfine.sh
 ```
 
 ### 5. Access Interfaces
-- **Streamlit Dashboard:** http://localhost:8501
-- **FastAPI Interactive Docs:** http://localhost:8000/docs
-- **Neo4j Browser:** http://localhost:7474 (User: `neo4j`, Password: `transiq_secret`)
+- **Streamlit Web Dashboard:** [http://localhost:8501](http://localhost:8501)
+- **FastAPI Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Neo4j Graph Browser:** [http://localhost:7474](http://localhost:7474) (User: `neo4j`, Password: `transiq_secret`)
+
+
+### 6. Teardown & Reset Environment
+```bash
+# Stop and remove all running containers (preserves database data volumes):
+docker compose down
+
+# Full clean reset (stops containers AND wipes database data volumes for a fresh state):
+docker compose down -v
+```
+---
+
+## 8. Web Dashboard Interactive User Manual
+
+The Streamlit web interface is available at `http://localhost:8501` and is organized into three operational tabs:
+
+### Tab 1: 🗺️ Sheltered Transit Router
+1. **Select Commuter Profile & Anchors (Sidebar):**
+   - Choose a commuter profile (e.g. `joseph.poon@sit.singaporetech.edu.sg`).
+   - Select an Origin HDB (e.g. `Blk 183 Boon Lay Ave - 640183`) and Destination (e.g. `Jurong Point Mall - 648886` or other town anchors).
+2. **Choose Optimization Mode:**
+   - **Rain & Sun Shield:** Maximizes covered walkway walking, applying heavy soft penalties ($0.08\text{ min/m}$) to unsheltered walking.
+   - **Comfort & Seats:** Heavily penalizes crowded transit legs ($20\text{ min}$ penalty per `LSD` crush-load bus/train).
+   - **Least Transfers:** Penalizes vehicle transfers ($25\text{ min}$ per change) and enforces barrier-free accessibility.
+   - **Fastest:** Baseline shortest travel time.
+3. **Optional Strict Filter Toggle:**
+   - Flip "Strict Compliance Filter" to reject non-compliant routes entirely (e.g. absolute zero unsheltered walking).
+4. **Search & Inspect Itinerary:**
+   - Click **"Find Sheltered Route"**.
+   - Review the Interactive Folium Map: Green paths denote sheltered covered linkways; amber/red badges display live vehicle crowd levels.
+   - Inspect the Step-by-Step Navigation cards with walking distance, transit line number, and shelter badges.
+   - Click **"Save to Commuter Profile"** to execute an atomic multi-table transaction inserting into `saved_route`, `commuter_saved_route`, and `saved_route_stop`.
+
+### Tab 2: 📊 Analytics & Materialized Views
+1. **Sheltered Access Query (`v_sheltered_access` & `mv_sheltered_access`):**
+   - Enter a 6-digit postal code to inspect nearby covered linkways, barrier-free access flags, and roof conditions.
+   - Evaluated as an $O(1)$ read from the pre-computed materialized view.
+2. **Peak Hour Congestion Rankings (`v_peak_congestion`):**
+   - Displays morning peak window (07:00–09:00) congestion rankings computed using analytic window functions (`AVG() OVER` and `DENSE_RANK()`).
+3. **Fleet Crowding Distribution:**
+   - View live crowd levels across bus and rail fleets (`SEA` Seats Available, `SDA` Standing Available, `LSD` Limited Standing).
+
+### Tab 3: ⚡ Database Performance, Durability & EXPLAIN Proofs
+1. **Query Optimization Matrix (Pairs 1 to 5):**
+   - Inspect execution time comparisons between naive Formulation A and optimized Formulation B.
+   - Click **"Run Live Benchmark Suite Now"** to execute live `EXPLAIN (ANALYZE, BUFFERS)` queries in PostgreSQL and Profiling in Neo4j.
+   - Expand query cards to inspect the underlying SQL execution plans and speedup factors.
+2. **Interactive WAL Durability Test (`synchronous_commit`):**
+   - Select commit mode: `Strict ACID (synchronous_commit = ON)` vs `High-Throughput (synchronous_commit = OFF)`.
+   - Adjust batch size slider (100 to 1,000 updates).
+   - Click **"Test Live Telemetry Ingestion"** to execute live batch mutations on `live_crowd_snapshot`.
+   - Observe real-time metrics showing execution duration (ms) and throughput (updates/sec) demonstrating the impact of synchronous disk `fsync` versus in-memory WAL buffering.
 
 ---
 
-## 8. Streamlit Dashboard Design System
+## 9. Streamlit Dashboard Design System
 
 The frontend dashboard strictly adheres to the boxy, high-contrast visual standard required by Dr. Tong Rong and the course specification:
 - **Palette:** Clean slate background (`#F8FAFC`), pure white surface cards (`#FFFFFF`), slate typography (`#0F172A`), muted secondary labels (`#64748B`).
 - **Geometry:** 4px crisp border-radius, clean 1px border (`#E2E8F0`), zero decorative AI bubbles or generic widgets.
 - **Color Accents:** Sheltered walking green (`#16A34A`), transit blue (`#0284C7`), crowded amber (`#D97706`), crush-load red (`#DC2626`).
-- **Interactive Features:**
-  - Interactive Folium map with GeoJSON polylines and crowd badges.
-  - 3 commuter modes switcher with strict filtering toggle.
-  - Side-by-side SQL vs NoSQL benchmark viewer with live re-execution capability.
-  - Commuter profile switcher and route saving (relational CRUD).
-
 ---
 
-## 9. Deliverables & Rubric Compliance Matrix
-
+## 10. Deliverables & Rubric Compliance Matrix
 | Rubric Component | Weight | Standard | TRANSIQ Evidence & Implementation |
 | :--- | :--- | :--- | :--- |
 | **Project Quality & Implementation** | **40%** | Innovative, sufficient authentic data, dual-DB | Door-to-door sheltered router; 10 authentic datasets (LTA & Data.gov.sg); 12 BCNF tables, 3 views, 6 SQL patterns; Neo4j graph with 22,000 nodes & 244,000 edges; 5-pair EXPLAIN ANALYZE matrix with up to 686x speedup. |
@@ -215,7 +275,7 @@ The frontend dashboard strictly adheres to the boxy, high-contrast visual standa
 
 ---
 
-## 10. Contributors (Team G42)
+## 11. Contributors (Team G42)
 
 - **Joseph Poon (2501079)** — Data Engineering, PostGIS Spatial Buffers, Ingestion Pipeline
 - **Zayne Nicholas Lee (2503844)** — Relational Modeling, BCNF Normalization, PostgreSQL DDL

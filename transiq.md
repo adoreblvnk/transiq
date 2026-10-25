@@ -54,13 +54,14 @@ Commuter preferences are scored by default using weighted soft penalties to ensu
 | 9 | Passenger Volume OD (Train) | REST API to CSV | CSV | ~907K rows/month | Historical train congestion analytics |
 | 10 | Passenger Volume OD (Bus) | REST API to CSV | CSV | ~6.1M rows/month | Historical bus congestion analytics |
 
-### Ingestion Sampling Strategy
+### Ingestion Sampling Strategy (Option C: Calibrated Stratified Sampling)
 
-Loading 7M raw monthly OD rows directly on development instances creates unnecessary memory overhead. TRANSIQ uses a two-tier strategy:
+Loading 7M raw monthly OD rows directly creates redundant memory pressure without adding structural graph connectivity. TRANSIQ uses a calibrated stratified sampling strategy optimized for statistical benchmarking validity and cache escape:
 
-1. Structural Metadata (100%): Ingest all 13,357 HDB blocks, all ~5,000 bus stops, all 160+ MRT exits, and all 10K+ linkway segments to guarantee islandwide connectivity across all Singapore towns.
-2. Congestion Records (Representative Slice): Filter historical OD logs to weekday peak hours (07:00 to 09:00 and 17:00 to 19:00). This yields ~1.2M rows, providing realistic volume for indexing and execution plan analysis while loading rapidly via PostgreSQL COPY.
-
+1. Structural Metadata (100% Complete Islandwide): Ingest all 5,209 authentic bus stops, 165 MRT stations, 330 MRT exits from LTA DataMall, and all 7,183 covered linkway segments from LTA Walk2Ride.
+2. Stratified Residential Anchors: Ingest 4,500 HDB blocks stratified proportionally across all 24 Singapore planning towns (~185 blocks/town) with verified anchor postal codes.
+3. Congestion Records (Representative Peak-Hour Window): Sample 450,000 historical congestion records across weekday morning (07:00-09:00) and evening (17:00-19:00) peak windows.
+4. Cache Escape Working Set: Total database working set scales to ~150-200 MB, escaping CPU L3 cache (16-32 MB) by 5x. This ensures genuine PostgreSQL `shared_buffers` page cycling, 3-level B-Tree index traversal, and statistically sound P95/P99 latency variance during benchmarks.
 ### Static and API Dataset Breakdown
 
 | Source Category | Datasets Included | Total Count |
@@ -260,7 +261,8 @@ CREATE INDEX idx_live_snapshot_stop ON live_crowd_snapshot (stop_code, recorded_
 ### Analytical Views
 
 ```sql
-CREATE VIEW v_sheltered_access AS
+-- Materialized View for instant sheltered linkway access (O(1) indexed reads)
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_sheltered_access AS
 SELECT
     h.postal_code, h.block_no, h.town,
     l.linkway_id, l.is_barrier_free, l.roof_condition,
@@ -271,6 +273,21 @@ JOIN linkway_stop_access lsa ON lsa.stop_code IN (
     WHERE ST_DWithin(h.geom::geography, geom::geography, 500)
 )
 JOIN covered_linkway l ON l.linkway_id = lsa.linkway_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_sheltered_access_pk
+    ON mv_sheltered_access (postal_code, linkway_id);
+
+-- Dynamic view wrapper for backwards compatibility
+CREATE OR REPLACE VIEW v_sheltered_access AS
+SELECT * FROM mv_sheltered_access;
+
+-- Concurrently refreshable routine
+CREATE OR REPLACE FUNCTION refresh_sheltered_access()
+RETURNS VOID AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sheltered_access;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE VIEW v_peak_congestion AS
 SELECT
@@ -552,6 +569,14 @@ The architecture is divided into four distinct containerized services:
   - Geometry: Boxy rectangular cards with tight 4px corners (border-radius: 4px), crisp 1px borders (border: 1px solid #E2E8F0), subtle elevation (box-shadow: 0 1px 2px rgba(0,0,0,0.04))
   - Accents: Sheltered green (#16A34A), transit blue (#0284C7), crowded amber (#D97706)
   - Layout: High-contrast metric chips, structured step-by-step itinerary boxes, collapsible execution plan drawer
+
+### 5. Testing, Profiling & Benchmarking Suite
+- PostgreSQL Concurrency Benchmark: `pgbench` (native PostgreSQL client benchmarking for TPS, connection pool limits, and WAL commit contention)
+- Statistically Rigorous CLI Harness: `hyperfine` (sharkdp/hyperfine for warmup runs, standard deviation, and cross-engine execution profiling)
+- Query Execution Plan Visualizer: `pev2` (dalibo/pev2 for graphical tree decomposition, buffer hit ratio, and Quicksort memory footprint analysis)
+- Automated Testing Framework: `pytest` and FastAPI `TestClient` (httpx) for end-to-end API validation, schema integrity checks, and ACID transaction rollback verification
+- In-Engine Relational Profiling: `EXPLAIN (ANALYZE, BUFFERS, SETTINGS, WAL)` inspecting buffer cache page hits vs disk reads, dirty page generation, and WAL write bytes
+- Graph Engine Profiling: Neo4j Cypher `PROFILE` and `EXPLAIN` inspecting DB hits, page cache hit ratio, and traversal memory usage
 ## File Structure
 
 ```
