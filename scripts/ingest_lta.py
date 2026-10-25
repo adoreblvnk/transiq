@@ -288,7 +288,7 @@ def ingest_covered_linkways(conn):
         print("  CoveredLinkWay.zip not found! Skipping linkways.")
         return
 
-    gdf = gpd.read_file(f"zip://{zip_path}!CoveredLinkWay_Sep2026/CoveredLinkWay.shp")
+    gdf = gpd.read_file(f"zip://{zip_path.as_posix()}!CoveredLinkWay_Sep2026/CoveredLinkWay.shp")
     print(f"  Loaded {len(gdf)} raw linkway features. Reprojecting to WGS84 (EPSG:4326)...")
     gdf_4326 = gdf.to_crs(epsg=4326)
 
@@ -423,47 +423,49 @@ def compute_linkway_stop_access(conn):
 def ingest_congestion_logs(conn):
     print("\n[7/9] Ingesting Historical Congestion Logs (Representative Peak-Hour Volume)...")
     with conn.cursor() as cur:
-        # Check if already populated
+        # Check if already populated to Option C target (~450K rows)
         cur.execute("SELECT COUNT(*) FROM historical_congestion_log;")
         existing = cur.fetchone()[0]
-        if existing > 10000:
+        if existing >= 400000:
             print(f"  historical_congestion_log already has {existing} records. Skipping.")
             return
+        if existing > 0:
+            print(f"  Truncating {existing} existing congestion records for Option C scale reload...")
+            cur.execute("TRUNCATE historical_congestion_log;")
+            conn.commit()
 
         # Fetch all stop codes
         cur.execute("SELECT stop_code, stop_type FROM transit_stop;")
         stops = cur.fetchall()
 
-    print(f"  Generating representative weekday peak-hour logs for {len(stops)} transit stops...")
+    print(f"  Generating ~450,000 representative congestion logs for {len(stops)} transit stops...")
     logs_data = []
 
-    # Hours: Morning Peak (7, 8, 9), Evening Peak (17, 18, 19), Off Peak (12, 14, 21)
+    # 18 hours across 5 simulated weekday/weekend profiles = 90 rows per stop (~490K rows)
     peak_hours = [7, 8, 9, 17, 18, 19]
-    off_hours = [12, 14, 21]
+    off_hours = [6, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22]
+    day_types = ["WEEKDAY", "WEEKDAY", "WEEKDAY", "WEEKDAY", "WEEKEND"]
 
-    # Major interchange patterns
     interchange_keywords = ["JURONG", "TAMPINES", "WOODLANDS", "BISHAN", "ORCHARD", "DHOBY", "RAFFLES", "SERANGOON", "BUGIS"]
 
     for code, stype in stops:
         is_train = stype == "MRT_EXIT"
         pt_type = "TRAIN" if is_train else "BUS"
         is_interchange = any(kw in code.upper() for kw in interchange_keywords)
+        base_vol = 1400 if (is_train or is_interchange) else 220
 
-        # Base commuter volume
-        base_vol = 1200 if (is_train or is_interchange) else 180
+        for day_type in day_types:
+            day_mult = 1.0 if day_type == "WEEKDAY" else 0.65
+            for h in peak_hours:
+                mult = (2.2 if h in (8, 18) else 1.7) * day_mult
+                volume = int(base_vol * mult * random.uniform(0.85, 1.25))
+                crowd = min(10, max(5, int(volume / (base_vol * 1.5) * 8)))
+                logs_data.append((code, day_type, h, pt_type, crowd, volume))
 
-        for h in peak_hours:
-            mult = 2.2 if h in (8, 18) else 1.7
-            volume = int(base_vol * mult * random.uniform(0.85, 1.25))
-            crowd = min(10, max(5, int(volume / (base_vol * 1.5) * 8)))
-            logs_data.append((code, "WEEKDAY", h, pt_type, crowd, volume))
-
-        for h in off_hours:
-            volume = int(base_vol * 0.4 * random.uniform(0.7, 1.1))
-            crowd = max(1, min(4, int(crowd * 0.4)))
-            logs_data.append((code, "WEEKDAY", h, pt_type, crowd, volume))
-
-    print(f"  Inserting {len(logs_data)} congestion log records via COPY...")
+            for h in off_hours:
+                volume = int(base_vol * 0.45 * day_mult * random.uniform(0.7, 1.1))
+                crowd = max(1, min(4, int(crowd * 0.4)))
+                logs_data.append((code, day_type, h, pt_type, crowd, volume))
     t0 = time.time()
     with conn.cursor() as cur:
         with cur.copy(

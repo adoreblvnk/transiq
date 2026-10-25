@@ -1,14 +1,33 @@
--- View 1: Sheltered Walkway Access around HDBs (Optimized with PostGIS GiST Index)
-CREATE OR REPLACE VIEW v_sheltered_access AS
+-- Materialized View 1: Sheltered Walkway Access around HDBs (Materialized O(1) Reads)
+DROP VIEW IF EXISTS v_sheltered_access CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS mv_sheltered_access CASCADE;
+
+CREATE MATERIALIZED VIEW mv_sheltered_access AS
 SELECT
     h.postal_code, h.block_no, h.town,
     l.linkway_id, l.is_barrier_free, l.roof_condition,
-    lsa.walk_distance_m, lsa.is_sheltered
+    lsa.walk_distance_m, lsa.is_sheltered,
+    ts.stop_code
 FROM hdb_building h
 JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0045)
 JOIN linkway_stop_access lsa ON lsa.stop_code = ts.stop_code
 JOIN covered_linkway l ON l.linkway_id = lsa.linkway_id;
 
+CREATE UNIQUE INDEX idx_mv_sheltered_access_pk
+    ON mv_sheltered_access (postal_code, stop_code, linkway_id);
+
+-- Refresh routine using CONCURRENTLY to avoid blocking read queries
+CREATE OR REPLACE FUNCTION refresh_sheltered_access()
+RETURNS VOID AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sheltered_access;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Dynamic view wrapper for API backwards compatibility
+CREATE OR REPLACE VIEW v_sheltered_access AS
+SELECT postal_code, block_no, town, linkway_id, is_barrier_free, roof_condition, walk_distance_m, is_sheltered
+FROM mv_sheltered_access;
 -- View 2: Peak Hour Congestion with Window Functions
 CREATE OR REPLACE VIEW v_peak_congestion AS
 SELECT

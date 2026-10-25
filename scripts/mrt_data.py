@@ -23,8 +23,8 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 MRT_EXITS_GEOJSON = DATA_DIR / "mrt_exits.geojson"
 
 # Average MRT operating speed (~40 km/h) + 0.75 min dwell time per stop
-MRT_AVG_SPEED_KMH = 40.0
-MRT_DWELL_TIME_MIN = 0.75
+MRT_AVG_SPEED_KMH = 48.0
+MRT_DWELL_TIME_MIN = 0.60
 # Walking speed for transfers (~4 km/h = 66.7 m/min) + buffer for fare gates/escalators
 WALK_SPEED_M_PER_MIN = 66.67
 BASE_TRANSFER_TIME_MIN = 2.0

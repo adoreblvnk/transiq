@@ -71,7 +71,7 @@ def test_postgresql():
             SELECT ts.stop_name, SUM(hcl.commuter_volume) AS vol
             FROM historical_congestion_log hcl
             JOIN transit_stop ts ON hcl.stop_code = ts.stop_code
-            WHERE hcl.day_type = 'WEEKDAY'
+            WHERE hcl.day_type = 'WEEKDAY' AND hcl.hour_of_day BETWEEN 7 AND 9
             GROUP BY ts.stop_name
             HAVING AVG(hcl.crowd_index) >= 5
             ORDER BY vol DESC LIMIT 1;

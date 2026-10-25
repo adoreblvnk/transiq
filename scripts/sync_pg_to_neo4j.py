@@ -327,7 +327,7 @@ def sync_walkway_connections(pg_conn, session):
                 ts.stop_code,
                 GREATEST(10.0, ROUND(ST_Distance(h.geom::geography, ts.geom::geography)::numeric, 1)) AS distance_m
             FROM hdb_building h
-            JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0030)
+            JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0050)
             JOIN linkway_stop_access lsa ON lsa.stop_code = ts.stop_code
             WHERE ts.stop_type = 'BUS_STOP'
             LIMIT 25000;
@@ -460,7 +460,7 @@ def sync_walkway_connections(pg_conn, session):
                 ts.stop_code,
                 GREATEST(10.0, ROUND(ST_Distance(h.geom::geography, ts.geom::geography)::numeric, 1)) AS distance_m
             FROM hdb_building h
-            JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0020)
+            JOIN transit_stop ts ON ST_DWithin(h.geom, ts.geom, 0.0045)
             WHERE ts.stop_type = 'BUS_STOP'
               AND ts.stop_code NOT IN (SELECT stop_code FROM linkway_stop_access)
             LIMIT 15000;

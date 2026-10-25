@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgis/postgis:16-3.4
+    platform: linux/amd64
     container_name: transiq_postgres
     restart: unless-stopped
     environment:
@@ -45,6 +46,9 @@ services:
     command: uv run uvicorn api.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/.venv
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -67,6 +71,9 @@ services:
     command: uv run streamlit run ui/app.py --server.port=8501 --server.address=0.0.0.0
     ports:
       - "8501:8501"
+    volumes:
+      - .:/app
+      - /app/.venv
     environment:
       - API_URL=http://api:8000
     depends_on:
