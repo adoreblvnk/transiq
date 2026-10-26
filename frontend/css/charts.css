@@ -1,0 +1,136 @@
+/* ==========================================================================
+   LAYERCAKE-INSPIRED SVG DATA VISUALIZATIONS
+   ========================================================================== */
+.chart-container {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--brutal-shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+.chart-title {
+  font-family: var(--font-mono);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.chart-subtitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-muted);
+}
+
+.layercake-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-grid-line {
+  stroke: var(--grid-line);
+  stroke-dasharray: 2, 4;
+  stroke-width: 1;
+}
+
+.chart-axis-line {
+  stroke: var(--border-subtle);
+  stroke-width: 1.5;
+}
+
+.chart-axis-text {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  fill: var(--ink-faint);
+}
+
+.chart-bar {
+  cursor: pointer;
+}
+
+.chart-bar:hover {
+  opacity: 0.8;
+}
+
+/* KPI Cards */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--brutal-shadow);
+}
+
+.kpi-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.kpi-sub {
+  font-size: var(--fs-sub);
+  color: var(--ink-muted);
+}
+
+/* LayerCake Proportional Timeline Bar in Route Card */
+.journey-timeline-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journey-timeline-bar {
+  height: 10px;
+  width: 100%;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  overflow: hidden;
+}
+
+.timeline-segment {
+  height: 100%;
+}
+
+.timeline-segment.shelter { background: var(--shelter); }
+.timeline-segment.transit { background: var(--transit); }
+.timeline-segment.open { background: var(--rain); }
+
+.timeline-legend-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-faint);
+}

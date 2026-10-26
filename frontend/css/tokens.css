@@ -1,0 +1,96 @@
+/* ==========================================================================
+   TRANSIQ DESIGN TOKENS (1:1 with DESIGN.md specification)
+   ========================================================================== */
+:root {
+  --paper: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-subtle: #F1F3F5;
+  --surface-hover: #E9ECEF;
+  --surface-active: #DEE2E6;
+
+  --ink: #111827;
+  --ink-muted: #374151;
+  --ink-faint: #6B7280;
+  --ink-inverse: #FFFFFF;
+
+  --border: #111827;
+  --border-subtle: #D1D5DB;
+  --grid-line: rgba(17, 24, 39, 0.05);
+
+  /* High-Contrast Semantic Signals (WCAG AA >= 4.5:1) */
+  --signal: #9A3412;          /* Deep rust vermilion */
+  --signal-hover: #7C2D12;
+  --signal-subtle: #FFEDD5;
+
+  --shelter: #0F6738;         /* Deep forest green */
+  --shelter-bg: #DCFCE7;
+  --shelter-border: #0F6738;
+
+  --rain: #854D0E;            /* Deep amber bronze */
+  --rain-bg: #FEF3C7;
+  --rain-border: #854D0E;
+
+  --crowd: #991B1B;          /* Deep crimson */
+  --crowd-bg: #FEE2E2;
+  --crowd-border: #991B1B;
+
+  --transit: #1D4ED8;        /* Deep royal transit blue */
+  --transit-bg: #DBEAFE;
+  --transit-border: #1D4ED8;
+
+  --radius: 2px;             /* Crisp squared geometry */
+
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Typography Scale (Strictly >= 12px for micro text) */
+  --fs-title: 18px;
+  --fs-lead: 16px;
+  --fs-body: 14px;
+  --fs-sub: 13px;
+  --fs-micro: 12px;
+
+  /* Sharp offset brutalist shadows */
+  --brutal-shadow: 2px 2px 0 var(--border);
+  --brutal-shadow-hover: 3px 3px 0 var(--border);
+  --brutal-shadow-active: 1px 1px 0 var(--border);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accessibility Skip Link */
+.skip-link {
+  position: absolute;
+  top: -50px;
+  left: 10px;
+  background: var(--signal);
+  color: #FFFFFF;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: var(--fs-sub);
+  z-index: 9999;
+  text-decoration: none;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  transition: top 0.15s ease-in-out;
+}
+
+.skip-link:focus {
+  top: 10px;
+  outline: 2px solid var(--border);
+}
+
+/* Global Focus Ring (Excluding styled text inputs to prevent double-box bug) */
+:focus-visible:not(.field-input) {
+  outline: 2px solid var(--signal) !important;
+  outline-offset: 2px !important;
+}

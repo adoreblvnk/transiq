@@ -1,0 +1,241 @@
+/* ==========================================================================
+   APP SHELL, HEADER & GRID LAYOUT
+   ========================================================================== */
+html, body {
+  height: 100vh;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App Header Shell */
+.app-header {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.logo {
+  font-family: var(--font-sans);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.logo-sub {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-muted);
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 8px;
+  display: none;
+}
+
+@media (min-width: 760px) {
+  .logo-sub { display: inline-block; }
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-subtle);
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.nav-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 5px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  letter-spacing: 0.03em;
+  transition: all 0.1s ease;
+  min-height: 32px;
+}
+
+.nav-tab:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+.nav-tab.active {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 1px 1px 0 var(--border);
+}
+
+/* Main Viewport Container */
+.main-view {
+  flex: 1;
+  height: calc(100vh - 52px);
+  display: flex;
+  position: relative;
+  background: var(--paper);
+}
+
+.page-pane {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.page-pane.active {
+  display: flex;
+}
+
+/* Mobile View Toggle */
+.mobile-tab-bar {
+  display: none;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 6px;
+  gap: 6px;
+}
+
+.mobile-tab-btn {
+  flex: 1;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.mobile-tab-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+  box-shadow: 1px 1px 0 var(--border);
+}
+
+/* Router Sidebar: Pinned Controls + Independent Itinerary Scroll */
+.sidebar-pane {
+  width: 440px;
+  height: 100%;
+  background: var(--surface);
+  border-right: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.sidebar-pinned-controls {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 2px solid var(--border);
+  background: var(--surface);
+}
+
+.sidebar-itinerary-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  background: var(--paper);
+}
+
+.itinerary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.itinerary-title {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+.itinerary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+/* Persistent Map Canvas */
+.map-pane {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--border);
+}
+
+#leaflet-map {
+  width: 100%;
+  height: 100%;
+  background: #F1F3F5;
+}
+
+.leaflet-top.leaflet-left {
+  top: auto !important;
+  bottom: 24px !important;
+  left: 16px !important;
+}
+
+/* Responsive Queries */
+@media (max-width: 860px) {
+  .app-header { padding: 0 12px; }
+  .mobile-tab-bar { display: flex; }
+  .main-view { flex-direction: column; }
+  #pane-router { flex-direction: column; }
+  .sidebar-pane { width: 100%; border-right: none; border-bottom: 2px solid var(--border); }
+  .map-pane { width: 100%; height: 100%; display: none; border-left: none; }
+  #pane-router.show-map .sidebar-pane { display: none; }
+  #pane-router.show-map .map-pane { display: flex; }
+  .kpi-row { grid-template-columns: 1fr; }
+}
