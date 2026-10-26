@@ -1,8 +1,8 @@
 # TRANSIQ — Door-to-Door Sheltered Transit Routing Engine
 
-**Course:** INF2003 Database Systems  
-**Group:** G42  
-**Weightage:** 50% of Final Grade (25% Relational + 25% Non-Relational)  
+**Course:** INF2003 Database Systems
+**Group:** G42
+**Weightage:** 50% of Final Grade (25% Relational + 25% Non-Relational)
 **Target Grade:** A+ (>=80%, Excellent Band)
 
 ---
@@ -257,13 +257,14 @@ The Streamlit web interface is available at `http://localhost:8501` and is organ
 
 ---
 
-## 9. Streamlit Dashboard Design System
+## 9. Design System: Technical Editorial Brutalism
 
-The frontend dashboard strictly adheres to the boxy, high-contrast visual standard required by Dr. Tong Rong and the course specification:
-- **Palette:** Clean slate background (`#F8FAFC`), pure white surface cards (`#FFFFFF`), slate typography (`#0F172A`), muted secondary labels (`#64748B`).
-- **Geometry:** 4px crisp border-radius, clean 1px border (`#E2E8F0`), zero decorative AI bubbles or generic widgets.
-- **Color Accents:** Sheltered walking green (`#16A34A`), transit blue (`#0284C7`), crowded amber (`#D97706`), crush-load red (`#DC2626`).
----
+The TRANSIQ web interface follows an authentic architectural and transit engineering visual standard documented in [`DESIGN.md`](DESIGN.md):
+- **North Star:** "The Technical Operations Blueprint"
+- **Palette:** Off-white drafting paper (`#F8F9FA`), pure white panels (`#FFFFFF`), deep charcoal ink (`#111827`), rust signal accent (`#9A3412`), forest green shelter (`#0F6738`).
+- **Geometry:** Crisp 2px corners (`--radius: 2px`), 2px solid ink borders, tactile 2px offset drop shadows.
+- **Typography:** `IBM Plex Sans` (interface) and `IBM Plex Mono` (metadata, query plans, telemetry).
+- **Standards:** WCAG 2.2 AA compliant contrast ($\ge 4.5:1$), responsive SVG visualizations, and 100vh pinned single-page architecture.
 
 ## 10. Deliverables & Rubric Compliance Matrix
 | Rubric Component | Weight | Standard | TRANSIQ Evidence & Implementation |

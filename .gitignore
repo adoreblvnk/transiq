@@ -30,8 +30,15 @@ data/raw/
 *.prj
 *.csv.gz
 
-# System / IDE
+# System / IDE / Agent caches
 .DS_Store
 .idea/
 .vscode/
+.claude/
+.agents/
 *.swp
+# Frontend & Playwright
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+.playwright-cli/

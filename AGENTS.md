@@ -18,4 +18,4 @@
 - Architecture: Maintain a strict 3-tier setup (Streamlit UI -> FastAPI backend -> PostgreSQL + PostGIS and Neo4j).
 - Tooling: Use `uv` for Python environments and package management.
 - Authentic data: Ingest authentic datasets from LTA DataMall, Data.gov.sg, and OneMap. Use representative peak-hour sampling for large OD trip volumes.
-- Frontend Aesthetic: Strictly enforce a light, smooth, and boxy visual language in Streamlit (4px border-radius, clean 1px borders #E2E8F0, white cards #FFFFFF, high-contrast typography, zero rounded bubbles or cartoonish components).
+- Frontend Aesthetic: Adhere to the Technical Editorial Brutalism design system in DESIGN.md (2px border-radius, 2px solid ink borders #111827, white surface cards #FFFFFF on #F8F9FA paper, IBM Plex Sans & Mono typography, zero fuzzy drop shadows or decorative AI slop).

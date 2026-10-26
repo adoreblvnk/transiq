@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from api.services.db import get_neo4j_session, get_pg_connection
-from api.services.onemap import search_address
+from api.services.onemap import search_address, get_onemap_token
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 CATALOG_FILE = ROOT_DIR / "data" / "verified_88_locations.json"
@@ -14,8 +14,8 @@ router = APIRouter(prefix="/api/routes", tags=["Routing"])
 
 
 class RouteSearchRequest(BaseModel):
-    origin_postal: str = Field(default="640183", description="Origin HDB 6-digit postal code")
-    dest_postal: str = Field(default="648886", description="Destination commercial or HDB 6-digit postal code")
+    origin_postal: str = Field(default="543287", description="Origin HDB 6-digit postal code (Compassvale Cape)")
+    dest_postal: str = Field(default="149053", description="Destination 6-digit postal code (Queensway Shopping Centre)")
     mode: str = Field(default="FASTEST", description="Optimization mode: RAIN_SHIELD, COMFORT_SEATS, LEAST_TRANSFERS, FASTEST")
     strict_mode: bool = Field(default=False, description="Whether to reject non-compliant legs strictly")
     weight_unsheltered: Optional[float] = Field(default=None, description="Custom penalty per meter unsheltered")
@@ -53,6 +53,22 @@ def geocode_address(query: str = Query(..., min_length=2)):
     """Geocode address or postal code live using OneMap API."""
     return search_address(query)
 
+@router.get("/onemap_status")
+def get_onemap_status():
+    """Retrieve OneMap API connection status and active token capability."""
+    token = get_onemap_token()
+    return {
+        "status": "connected" if token else "unauthenticated",
+        "has_token": bool(token),
+        "authority": "Singapore Land Authority (SLA)",
+        "tile_endpoints": {
+            "default": "https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png",
+            "night": "https://www.onemap.gov.sg/maps/tiles/Night/{z}/{x}/{y}.png",
+            "grey": "https://www.onemap.gov.sg/maps/tiles/Grey/{z}/{x}/{y}.png",
+            "original": "https://www.onemap.gov.sg/maps/tiles/Original/{z}/{x}/{y}.png"
+        }
+    }
+
 def ensure_postal_in_graph(session, postal_code: str) -> bool:
     """Ensure a postal code exists as an indexed node in Neo4j connected to transit."""
     clean_p = postal_code.strip()
@@ -86,18 +102,26 @@ def ensure_postal_in_graph(session, postal_code: str) -> bool:
     if lat is None or lon is None:
         return False
 
-    # Dynamically inject node and connect to transit within 500m
+    # Dynamically inject node and connect to transit
     session.run(
         """
         MERGE (n:HDBBlock {postal_code: $postal})
         SET n.name = $name, n.lat = $lat, n.lon = $lon,
             n.location = point({latitude: $lat, longitude: $lon})
         WITH n
+        MATCH (s) WHERE (s:BusStop OR s:MRTExit) AND (EXISTS { MATCH (s)-[:TRANSIT_RIDE]-() } OR s:MRTExit)
+        WITH n, s ORDER BY point.distance(n.location, s.location) ASC LIMIT 3
+        WHERE point.distance(n.location, s.location) <= 1500
+        MERGE (n)-[w1:UNSHELTERED_WALK]->(s)
+        SET w1.distance_m = round(point.distance(n.location, s.location)), w1.is_covered = false
+        MERGE (s)-[w2:UNSHELTERED_WALK]->(n)
+        SET w2.distance_m = round(point.distance(n.location, s.location)), w2.is_covered = false
+        WITH n
         MATCH (s) WHERE (s:BusStop OR s:MRTExit) AND point.distance(n.location, s.location) <= 500
-        MERGE (n)-[w1:SHELTERED_WALK]->(s)
-        SET w1.distance_m = round(point.distance(n.location, s.location)), w1.is_covered = true
-        MERGE (s)-[w2:SHELTERED_WALK]->(n)
-        SET w2.distance_m = round(point.distance(n.location, s.location)), w2.is_covered = true
+        MERGE (n)-[w3:SHELTERED_WALK]->(s)
+        SET w3.distance_m = round(point.distance(n.location, s.location)), w3.is_covered = true
+        MERGE (s)-[w4:SHELTERED_WALK]->(n)
+        SET w4.distance_m = round(point.distance(n.location, s.location)), w4.is_covered = true
         """,
         postal=clean_p, name=name, lat=lat, lon=lon
     )
@@ -336,15 +360,24 @@ def search_transit_routes(req: RouteSearchRequest):
     w_crowd = req.weight_crowd
     w_trans = req.weight_transfer
 
-    if req.mode == "RAIN_SHIELD":
-        if w_unsh is None: w_unsh = 0.08
+    mode_upper = req.mode.upper().strip()
+    strict = req.strict_mode
+
+    if mode_upper in ("SHELTER_STRICT", "RAIN_SHIELD", "SHELTER"):
+        if w_unsh is None: w_unsh = 0.10
         if w_crowd is None: w_crowd = 2.0
         if w_trans is None: w_trans = 5.0
-    elif req.mode == "COMFORT_SEATS":
+        if mode_upper in ("SHELTER_STRICT", "SHELTER"):
+            strict = True
+    elif mode_upper in ("BALANCED", "TRANSIQ"):
+        if w_unsh is None: w_unsh = 0.05
+        if w_crowd is None: w_crowd = 8.0
+        if w_trans is None: w_trans = 8.0
+    elif mode_upper in ("CROWD", "COMFORT_SEATS", "COMFORT"):
         if w_unsh is None: w_unsh = 0.02
         if w_crowd is None: w_crowd = 20.0
         if w_trans is None: w_trans = 5.0
-    elif req.mode == "LEAST_TRANSFERS":
+    elif mode_upper in ("TRANSFERS", "LEAST_TRANSFERS"):
         if w_unsh is None: w_unsh = 0.02
         if w_crowd is None: w_crowd = 5.0
         if w_trans is None: w_trans = 25.0
@@ -356,7 +389,7 @@ def search_transit_routes(req: RouteSearchRequest):
     params = {
         "origin_postal": req.origin_postal,
         "dest_postal": req.dest_postal,
-        "strict_mode": req.strict_mode,
+        "strict_mode": strict,
         "weight_unsheltered": float(w_unsh),
         "weight_crowd": float(w_crowd),
         "weight_transfer": float(w_trans),
@@ -457,14 +490,14 @@ def search_transit_routes(req: RouteSearchRequest):
     MATCH (dest {postal_code: $dest_postal})
 
     MATCH (m1:MRTExit)
-    WITH start, dest, m1 ORDER BY point.distance(start.location, m1.location) ASC LIMIT 1
+    WITH start, dest, m1 ORDER BY point.distance(start.location, m1.location) ASC LIMIT 3
 
     MATCH (m2:MRTExit)
-    WITH start, dest, m1, m2 ORDER BY point.distance(dest.location, m2.location) ASC LIMIT 1
+    WITH start, dest, m1, m2 ORDER BY point.distance(dest.location, m2.location) ASC LIMIT 3
 
-    MATCH p_first = shortestPath((start)-[:SHELTERED_WALK|UNSHELTERED_WALK|TRANSIT_RIDE*..6]->(m1))
+    MATCH p_first = shortestPath((start)-[:SHELTERED_WALK|UNSHELTERED_WALK|TRANSIT_RIDE*..8]->(m1))
     MATCH p_mrt = shortestPath((m1)-[:TRANSIT_RIDE|STATION_TRANSFER*..45]->(m2))
-    MATCH p_last = shortestPath((m2)-[:SHELTERED_WALK|UNSHELTERED_WALK|TRANSIT_RIDE*..6]->(dest))
+    MATCH p_last = shortestPath((m2)-[:SHELTERED_WALK|UNSHELTERED_WALK|TRANSIT_RIDE*..8]->(dest))
     WHERE ($strict_mode = false OR (
         ALL(r IN relationships(p_first) WHERE type(r) <> 'UNSHELTERED_WALK') AND
         ALL(r IN relationships(p_mrt) WHERE type(r) <> 'TRANSIT_RIDE' OR r.live_load <> 'LSD') AND
@@ -474,20 +507,22 @@ def search_transit_routes(req: RouteSearchRequest):
     WITH start, dest, p_first, p_mrt, p_last,
          relationships(p_first) + relationships(p_mrt) + relationships(p_last) AS all_rels,
          nodes(p_first) + nodes(p_mrt)[1..] + nodes(p_last)[1..] AS all_nodes
-    WITH all_rels, all_nodes,
+    WITH all_rels, all_nodes, p_first, p_last,
          [r IN all_rels WHERE type(r) = 'TRANSIT_RIDE'] AS transit_legs,
          [r IN all_rels WHERE type(r) = 'STATION_TRANSFER'] AS transfer_legs,
          [r IN all_rels WHERE type(r) = 'UNSHELTERED_WALK'] AS unsheltered_walks,
          [r IN all_rels WHERE type(r) = 'SHELTERED_WALK'] AS sheltered_walks
-    WITH all_rels, all_nodes, transit_legs,
+    WITH all_rels, all_nodes, transit_legs, p_first, p_last,
          reduce(t = 0.0, r IN transit_legs | t + coalesce(r.avg_duration_min, 2.5)) +
          reduce(tr = 0.0, r IN transfer_legs | tr + coalesce(r.walking_time_min, 2.0)) +
          ((reduce(u = 0.0, r IN unsheltered_walks | u + coalesce(r.distance_m, 50.0)) +
            reduce(s = 0.0, r IN sheltered_walks | s + coalesce(r.distance_m, 50.0))) / 75.0) AS base_travel_time,
          reduce(u = 0.0, r IN unsheltered_walks | u + coalesce(r.distance_m, 50.0)) AS unsheltered_m,
          reduce(s = 0.0, r IN sheltered_walks | s + coalesce(r.distance_m, 50.0)) AS sheltered_m,
-         size([r IN all_rels WHERE type(r) = 'STATION_TRANSFER']) + (CASE WHEN size(transit_legs) > 0 THEN size(transit_legs) - 1 ELSE 0 END) AS transfer_count,
-         size([r IN transit_legs WHERE r.live_load = 'LSD']) AS lsd_leg_count
+        size([r IN all_rels WHERE type(r) = 'STATION_TRANSFER']) +
+        (CASE WHEN size([r IN relationships(p_first) WHERE type(r) = 'TRANSIT_RIDE']) > 0 THEN 1 ELSE 0 END) +
+        (CASE WHEN size([r IN relationships(p_last) WHERE type(r) = 'TRANSIT_RIDE']) > 0 THEN 1 ELSE 0 END) AS transfer_count,
+        size([r IN transit_legs WHERE r.live_load = 'LSD']) AS lsd_leg_count
 
     RETURN
         all_nodes AS node_objs,
@@ -503,7 +538,7 @@ def search_transit_routes(req: RouteSearchRequest):
           + (lsd_leg_count * $weight_crowd)
           + (transfer_count * $weight_transfer)) AS score
     ORDER BY score ASC
-    LIMIT 1;
+    LIMIT 5;
     """
 
     records = []
@@ -545,105 +580,123 @@ def search_transit_routes(req: RouteSearchRequest):
         except Exception:
             pass
 
-        # Sort candidates strictly by TRANSIQ score ascending (Fastest/best score wins!)
+        if strict:
+            candidates = [c for c in candidates if float(c.get("unsheltered_m", 0.0)) == 0.0]
+
+        valid_entries = []
+        min_base_time = min((float(c.get("base_travel_time", 9999.0)) for c in candidates), default=9999.0)
+
+        for c in candidates:
+            node_objs = c["node_objs"]
+            rel_objs = c["rel_objs"]
+            coords = []
+            for n in node_objs:
+                lat = n.get("lat") or n.get("latitude")
+                lon = n.get("lon") or n.get("longitude")
+                if lat is not None and lon is not None:
+                    coords.append([float(lat), float(lon)])
+
+            steps = []
+            for i, rel in enumerate(rel_objs):
+                from_n = node_objs[i]
+                to_n = node_objs[i + 1]
+                rtype = rel.type
+                from_name = from_n.get("name") or from_n.get("postal_code") or from_n.get("code") or "Origin"
+                to_name = to_n.get("name") or to_n.get("postal_code") or to_n.get("code") or "Destination"
+                from_c = [float(from_n["lat"]), float(from_n["lon"])] if from_n.get("lat") and from_n.get("lon") else None
+                to_c = [float(to_n["lat"]), float(to_n["lon"])] if to_n.get("lat") and to_n.get("lon") else None
+                step_coords = [from_c, to_c] if from_c and to_c else []
+
+                if rtype == "SHELTERED_WALK":
+                    dist = float(rel.get("distance_m", 50.0))
+                    steps.append(ItineraryStep(
+                        step_type="WALK", transit_mode="WALK",
+                        from_name=str(from_name), to_name=str(to_name),
+                        distance_m=dist, duration_min=round(dist / 75.0, 1),
+                        is_sheltered=True, coordinates=step_coords
+                    ))
+                elif rtype == "UNSHELTERED_WALK":
+                    dist = float(rel.get("distance_m", 50.0))
+                    steps.append(ItineraryStep(
+                        step_type="WALK", transit_mode="WALK",
+                        from_name=str(from_name), to_name=str(to_name),
+                        distance_m=dist, duration_min=round(dist / 75.0, 1),
+                        is_sheltered=False, coordinates=step_coords
+                    ))
+                elif rtype == "TRANSIT_RIDE":
+                    svc = str(rel.get("service", "Transit")).strip()
+                    mrt_lines = {"EWL", "NSL", "NEL", "CCL", "DTL", "TEL"}
+                    is_mrt = svc.upper() in mrt_lines or "MRT" in str(from_name).upper() or "MRT" in str(to_name).upper()
+                    t_mode = "MRT" if is_mrt else "BUS"
+                    dist = round(float(rel.get("distance_km", 1.0)) * 1000.0, 0)
+                    steps.append(ItineraryStep(
+                        step_type="TRANSIT", transit_mode=t_mode,
+                        from_name=str(from_name), to_name=str(to_name),
+                        service=svc, distance_m=dist,
+                        duration_min=float(rel.get("avg_duration_min", 3.0)),
+                        is_sheltered=True, live_load=str(rel.get("live_load", "SEA")),
+                        coordinates=step_coords
+                    ))
+                elif rtype == "STATION_TRANSFER":
+                    dist = float(rel.get("distance_m", 80.0))
+                    steps.append(ItineraryStep(
+                        step_type="TRANSFER", transit_mode="TRANSFER",
+                        from_name=str(from_name), to_name=str(to_name),
+                        distance_m=dist, duration_min=float(rel.get("walking_time_min", 2.0)),
+                        is_sheltered=True, coordinates=step_coords
+                    ))
+
+            collapsed = collapse_consecutive_transit_steps(steps)
+            real_transfers = max(0, len([s for s in collapsed if s.step_type == "TRANSIT"]) - 1)
+            b_time = float(c["base_travel_time"])
+            unsh_m = float(c["unsheltered_m"])
+            lsd_cnt = int(c["lsd_leg_count"])
+
+            # 50% Travel Time Guardrail:
+            # Ensures Balanced mode does not detour beyond 1.5x of the fastest route
+            time_penalty = 0.0
+            if min_base_time < 9000.0 and b_time > (min_base_time * 1.5):
+                time_penalty = (b_time - (min_base_time * 1.5)) * 10.0
+
+            rescore = round(b_time + (unsh_m * float(w_unsh)) + (lsd_cnt * float(w_crowd)) + (real_transfers * float(w_trans)) + time_penalty, 2)
+
+            valid_entries.append({
+                "record": c,
+                "score": rescore,
+                "base_travel_time": round(b_time, 1),
+                "sheltered_m": round(float(c["sheltered_m"]), 1),
+                "unsheltered_m": round(unsh_m, 1),
+                "transfer_count": real_transfers,
+                "lsd_leg_count": lsd_cnt,
+                "itinerary_nodes": [str(x) for x in c["itinerary"]],
+                "steps": collapsed,
+                "coordinates": coords
+            })
+
+        # Sort candidates strictly by rescore ascending
         seen_itineraries = set()
-        for c in sorted(candidates, key=lambda x: float(x.get("score", 9999.0))):
-            itin_key = tuple(c.get("itinerary", []))
+        records = []
+        for ve in sorted(valid_entries, key=lambda x: x["score"]):
+            itin_key = tuple(ve["itinerary_nodes"])
             if itin_key not in seen_itineraries:
                 seen_itineraries.add(itin_key)
-                records.append(c)
+                records.append(ve)
             if len(records) >= 3:
                 break
-    results = []
-    for idx, rec in enumerate(records, 1):
-        node_objs = rec["node_objs"]
-        rel_objs = rec["rel_objs"]
 
-        coords = []
-        for n in node_objs:
-            lat = n.get("lat") or n.get("latitude")
-            lon = n.get("lon") or n.get("longitude")
-            if lat is not None and lon is not None:
-                coords.append([float(lat), float(lon)])
-
-        steps = []
-        for i, rel in enumerate(rel_objs):
-            from_n = node_objs[i]
-            to_n = node_objs[i + 1]
-            rtype = rel.type
-            from_name = from_n.get("name") or from_n.get("postal_code") or from_n.get("code") or "Origin"
-            to_name = to_n.get("name") or to_n.get("postal_code") or to_n.get("code") or "Destination"
-
-            from_c = [float(from_n["lat"]), float(from_n["lon"])] if from_n.get("lat") and from_n.get("lon") else None
-            to_c = [float(to_n["lat"]), float(to_n["lon"])] if to_n.get("lat") and to_n.get("lon") else None
-            step_coords = [from_c, to_c] if from_c and to_c else []
-
-            if rtype == "SHELTERED_WALK":
-                dist = float(rel.get("distance_m", 50.0))
-                steps.append(ItineraryStep(
-                    step_type="WALK",
-                    transit_mode="WALK",
-                    from_name=str(from_name),
-                    to_name=str(to_name),
-                    distance_m=dist,
-                    duration_min=round(dist / 75.0, 1),
-                    is_sheltered=True,
-                    coordinates=step_coords
-                ))
-            elif rtype == "UNSHELTERED_WALK":
-                dist = float(rel.get("distance_m", 50.0))
-                steps.append(ItineraryStep(
-                    step_type="WALK",
-                    transit_mode="WALK",
-                    from_name=str(from_name),
-                    to_name=str(to_name),
-                    distance_m=dist,
-                    duration_min=round(dist / 75.0, 1),
-                    is_sheltered=False,
-                    coordinates=step_coords
-                ))
-            elif rtype == "TRANSIT_RIDE":
-                svc = str(rel.get("service", "Transit")).strip()
-                mrt_lines = {"EWL", "NSL", "NEL", "CCL", "DTL", "TEL"}
-                is_mrt = svc.upper() in mrt_lines or "MRT" in str(from_name).upper() or "MRT" in str(to_name).upper()
-                t_mode = "MRT" if is_mrt else "BUS"
-                dist = round(float(rel.get("distance_km", 1.0)) * 1000.0, 0)
-                steps.append(ItineraryStep(
-                    step_type="TRANSIT",
-                    transit_mode=t_mode,
-                    from_name=str(from_name),
-                    to_name=str(to_name),
-                    service=svc,
-                    distance_m=dist,
-                    duration_min=float(rel.get("avg_duration_min", 3.0)),
-                    is_sheltered=True,
-                    live_load=str(rel.get("live_load", "SEA")),
-                    coordinates=step_coords
-                ))
-            elif rtype == "STATION_TRANSFER":
-                dist = float(rel.get("distance_m", 80.0))
-                steps.append(ItineraryStep(
-                    step_type="TRANSFER",
-                    transit_mode="TRANSFER",
-                    from_name=str(from_name),
-                    to_name=str(to_name),
-                    distance_m=dist,
-                    duration_min=float(rel.get("walking_time_min", 2.0)),
-                    is_sheltered=True,
-                    coordinates=step_coords
-                ))
-
-        results.append(RouteOption(
-            route_index=idx,
-            score=round(float(rec["score"]), 2),
-            base_travel_time=round(float(rec["base_travel_time"]), 1),
-            sheltered_m=round(float(rec["sheltered_m"]), 1),
-            unsheltered_m=round(float(rec["unsheltered_m"]), 1),
-            transfer_count=max(0, int(rec["transfer_count"])),
-            lsd_leg_count=int(rec["lsd_leg_count"]),
-            itinerary_nodes=[str(x) for x in rec["itinerary"]],
-            steps=collapse_consecutive_transit_steps(steps),
-            coordinates=coords
-        ))
-
-    return results
+        results = [
+            RouteOption(
+                route_index=idx,
+                score=r["score"],
+                base_travel_time=r["base_travel_time"],
+                sheltered_m=r["sheltered_m"],
+                unsheltered_m=r["unsheltered_m"],
+                transfer_count=r["transfer_count"],
+                lsd_leg_count=r["lsd_leg_count"],
+                itinerary_nodes=r["itinerary_nodes"],
+                steps=r["steps"],
+                coordinates=r["coordinates"]
+            )
+            for idx, r in enumerate(records, 1)
+        ]
+        return results

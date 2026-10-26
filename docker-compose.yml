@@ -64,21 +64,7 @@ services:
       neo4j:
         condition: service_healthy
 
-  ui:
-    build: .
-    container_name: transiq_ui
-    restart: unless-stopped
-    command: uv run streamlit run ui/app.py --server.port=8501 --server.address=0.0.0.0
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
-      - /app/.venv
-    environment:
-      - API_URL=http://api:8000
-    depends_on:
-      - api
-
+  # ui service will be replaced by the new frontend service once initialized
 volumes:
   postgres_data:
   neo4j_data:

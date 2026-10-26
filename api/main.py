@@ -4,9 +4,13 @@ Exposes REST endpoints for multi-modal routing, commuter profiles,
 analytical views, and database optimization benchmarks.
 """
 
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import routes, profiles, analytics, benchmarks
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="TRANSIQ API",
@@ -32,6 +36,11 @@ app.include_router(benchmarks.router)
 def health_check():
     return {"status": "online", "system": "TRANSIQ Dual-Database Engine"}
 
+
+@app.get("/")
+@app.get("/index.html")
+def serve_index():
+    return FileResponse(ROOT_DIR / "index.html")
 
 if __name__ == "__main__":
     import uvicorn

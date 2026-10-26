@@ -558,18 +558,18 @@ The architecture is divided into four distinct containerized services:
 - Spatial Utilities: Shapely 2.0, GeoPandas
 - Port: 8000 (exposes REST endpoints for routing, user profiles, and benchmark telemetry)
 
-### 4. Client Layer: Streamlit Dashboard (ui)
-- Runtime: Python 3.14 (managed via uv)
-- Framework: Streamlit 1.40+
-- Mapping Component: streamlit-folium and folium (GeoJSON polyline and marker rendering)
-- HTTP Client: httpx
-- Port: 8501 (interactive route selection, mode sliders, strict filter toggle, and live benchmark viewer)
-- Visual Style & Theme:
-  - Palette: Light background (#F8FAFC), crisp white card surfaces (#FFFFFF), deep slate typography (#0F172A), muted secondary text (#64748B)
-  - Geometry: Boxy rectangular cards with tight 4px corners (border-radius: 4px), crisp 1px borders (border: 1px solid #E2E8F0), subtle elevation (box-shadow: 0 1px 2px rgba(0,0,0,0.04))
-  - Accents: Sheltered green (#16A34A), transit blue (#0284C7), crowded amber (#D97706)
-  - Layout: High-contrast metric chips, structured step-by-step itinerary boxes, collapsible execution plan drawer
-
+### 4. Client Layer: SvelteKit Web Application (frontend)
+- Framework: Svelte 5 with SvelteKit 2
+- Bundler: Vite 8
+- Styling: Tailwind CSS v4
+- Component System: shadcn-svelte 
+	- Bits UI
+- Icons: lucide/svelte
+- Charts: Layer Cake
+- Motion: svelte/motion & Motion
+- Map Engine: Leaflet 1.9
+- Font: Geist & Space Mono
+- Syntax Theme: highlight.js
 ### 5. Testing, Profiling & Benchmarking Suite
 - PostgreSQL Concurrency Benchmark: `pgbench` (native PostgreSQL client benchmarking for TPS, connection pool limits, and WAL commit contention)
 - Statistically Rigorous CLI Harness: `hyperfine` (sharkdp/hyperfine for warmup runs, standard deviation, and cross-engine execution profiling)
@@ -605,8 +605,16 @@ transiq/
 │   ├── main.py               # FastAPI entrypoint
 │   ├── routers/              # Route endpoints (routing, profiles, benchmarks)
 │   └── services/             # psycopg3 and neo4j connection managers
-└── ui/
-    └── app.py                # Streamlit interactive transit map and controls
+├── frontend/                 # SvelteKit reactive web application
+│   ├── src/
+│   │   ├── lib/              # Reusable components, UI primitives, and API client
+│   │   │   ├── components/ui/# shadcn-svelte components (button, card, select, etc.)
+│   │   │   └── api.ts        # Typed FastAPI client
+│   │   └── routes/           # SvelteKit page routes and layout
+│   ├── package.json          # Node dependencies (Svelte 5, Tailwind v4, Leaflet)
+│   └── components.json       # shadcn-svelte Vega configuration
+└── ui/                       # Legacy Streamlit prototype (reference)
+    └── app.py
 ```
 
 ## A+ Rubric Alignment

@@ -51,11 +51,8 @@ def test_durability_mode(req: DurabilityTestRequest):
 
     with get_pg_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT stop_code FROM live_crowd_snapshot LIMIT %s;", (batch_size,))
+            cur.execute("SELECT stop_code FROM transit_stop LIMIT %s;", (batch_size,))
             stops = [r[0] for r in cur.fetchall()]
-            if not stops:
-                stops = ["01012"] * batch_size
-
             levels = ["SEA", "SDA", "LSD"]
             stops_arr = [stops[i % len(stops)] for i in range(batch_size)]
             loads_arr = [levels[i % 3] for i in range(batch_size)]

@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115",
-    "folium>=0.20.0",
     "geopandas>=1.2.0",
     "httpx>=0.28.1",
     "neo4j>=6.4.1",
@@ -23,8 +22,6 @@ dependencies = [
     "reportlab>=5.0.1",
     "requests>=2.34.2",
     "shapely>=2.2.0",
-    "streamlit>=1.66.0",
-    "streamlit-folium>=0.27.4",
     "uvicorn[standard]>=0.54.0",
 ]
 
