@@ -45,10 +45,7 @@ def health_check():
 @app.get("/")
 @app.get("/index.html")
 def serve_index():
-    frontend_path = ROOT_DIR / "frontend" / "index.html"
-    if frontend_path.exists():
-        return FileResponse(frontend_path)
-    return FileResponse(ROOT_DIR / "index.html")
+    return FileResponse(ROOT_DIR / "frontend" / "index.html")
 
 if __name__ == "__main__":
     import uvicorn
