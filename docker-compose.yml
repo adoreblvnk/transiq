@@ -64,7 +64,6 @@ services:
       neo4j:
         condition: service_healthy
 
-  # ui service will be replaced by the new frontend service once initialized
 volumes:
   postgres_data:
   neo4j_data:

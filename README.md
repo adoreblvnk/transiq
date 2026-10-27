@@ -1,285 +1,112 @@
 # TRANSIQ — Door-to-Door Sheltered Transit Routing Engine
 
-**Course:** INF2003 Database Systems
-**Group:** G42
-**Weightage:** 50% of Final Grade (25% Relational + 25% Non-Relational)
-**Target Grade:** A+ (>=80%, Excellent Band)
+**Course:** INF2003 Database Systems | **Group:** G42
 
----
+## What It Does
 
-## 1. Executive Summary
+Singapore navigation apps optimize for shortest travel time and ignore rain, sun and crush-load transit in the process. TRANSIQ is a door-to-door, multi-modal routing engine that paths commuters from an HDB void deck to a destination lobby over covered linkways, tracks live crowding telemetry (`SEA` / `SDA` / `LSD`), and lets commuters trade seconds of travel time for shelter, seats and fewer transfers.
 
-Existing urban navigation platforms (Google Maps, Apple Maps, Citymapper) optimize strictly for shortest travel time in Euclidean space. In Singapore's tropical climate, this routes commuters through open plazas, scorching concrete walkways, and torrential downpours to save negligible seconds, or herds passengers onto crush-load (`LSD`) transit when seated options exist. Singapore's Land Transport Authority (LTA) has constructed over 100 kilometers of covered linkways under the Walk2Ride Programme, yet no commercial routing engine models or prioritizes them.
-
-**TRANSIQ** is a door-to-door, multi-modal routing engine that navigates commuters from HDB void decks to destination lobbies via covered linkways, real-time crowding telemetry, and sheltered transit interchanges. It is built on a **dual-database architecture**: **PostgreSQL 16 with PostGIS 3.4** as the ACID system of record, and **Neo4j 5 Community** as an automated query-optimized graph projection.
+It runs on a dual-database architecture: **PostgreSQL 16 + PostGIS 3.4** as the ACID system of record (12 BCNF relations, GiST spatial indexes, analytical views), and **Neo4j 5 Community** as an automated query-optimized graph projection built from PostgreSQL by `scripts/sync_pg_to_neo4j.py`.
 
 ![System Architecture](diagrams/architecture.png)
-
----
-
-## 2. Dual-Database Justification & Division of Labor
-
-A dual-database design is essential because relational engines and graph databases exhibit fundamentally different computational complexities for spatial network problems:
-
-```
-┌───────────────────────────────────────────────┐        ┌──────────────────────────────────────────────┐
-│     PostgreSQL 16 + PostGIS 3.4               │        │     Neo4j 5 Community                        │
-│     (System of Record — Port 5432)            │        │     (Query-Optimized Graph — Port 7687)      │
-├───────────────────────────────────────────────┤        ├──────────────────────────────────────────────┤
-│ • Boyce-Codd Normal Form (12 Relations)       │        │ • Direct Walkway & Transit Topology          │
-│ • Strict ACID Durability & Foreign Key Cascades│        │ • O(1) Index-Free Pointer Hopping            │
-│ • Spatial R-Tree Indexing (GiST ST_DWithin)   │───────>│ • Multi-Objective Weighted Cypher Traversal  │
-│ • Analytical Views & Window Functions         │  ETL   │ • Sub-25ms Multi-Hop Route Finding           │
-│ • Commuter Profiles & Historical OD Logs      │        │ • Volatile Live Load Telemetry Updates       │
-└───────────────────────────────────────────────┘        └──────────────────────────────────────────────┘
-```
-
-1. **System of Record (PostgreSQL + PostGIS):**
-   - Enforces transactional consistency across 12 BCNF relations, foreign key cascades, and check constraints.
-   - Computes spatial buffering (`ST_DWithin`) using two-dimensional GiST R-Tree indexes to pre-calculate pedestrian accessibility between HDB blocks, linkways, and transit stops.
-   - Executes complex analytical window queries (`AVG() OVER (PARTITION BY)`) across 50,000+ congestion logs.
-
-2. **Query-Optimized Projection (Neo4j):**
-   - Relational recursive CTEs across 26,000 route segments require multi-table memory stack joins.
-   - Neo4j navigates physical pointers directly between nodes (`:HDBBlock`, `:BusStop`, `:MRTExit`, `:CommercialBuilding`) in constant time per hop.
-   - Projected automatically from PostgreSQL views via batched Cypher `UNWIND` transactions (`scripts/sync_pg_to_neo4j.py`).
-
----
-
-## 3. Authentic Singapore Datasets
-
-TRANSIQ ingests authentic datasets from Singapore government open repositories (LTA DataMall, Data.gov.sg, OneMap):
-
-| # | Dataset | Source | Format | Records | Role in TRANSIQ |
-| :- | :--- | :--- | :--- | :--- | :--- |
-| 1 | Covered Linkway Network | LTA DataMall (Static) | Shapefile (ZIP) | 7,183 linkways | Sheltered pedestrian walkway geometry |
-| 2 | HDB Property Information | Data.gov.sg (Public API) | CSV | 13,389 blocks | Origin and destination residential anchors |
-| 3 | Singapore Building Geocodes | OneMap & DataMall | JSON | 141,726 geocodes | Postal code to WGS84 coordinates |
-| 4 | Bus Stops Islandwide | LTA DataMall (REST API) | JSON | 5,209 stops | Complete bus network stop coordinates |
-| 5 | Bus Routes & Sequences | LTA DataMall (REST API) | JSON | 26,036 segments | Official stop sequences and road distances |
-| 6 | Bus Services | LTA DataMall (REST API) | JSON | 808 services | Public bus operator and service registry |
-| 7 | MRT/LRT Station Exits | Data.gov.sg (Public API) | GeoJSON | 613 exits | Exact street exits for 188 stations |
-| 8 | MRT Network Sequences | LTA Operating Schedules | Python/JSON | 326 segments | Station sequences for EWL, NSL, NEL, CCL, DTL, TEL |
-| 9 | Historical Congestion Logs | LTA Passenger Volume OD | SQL COPY | 53,775 rows | Representative peak-hour crowding indices |
-| 10 | Live Crowd Snapshots | LTA Platform Telemetry | Dynamic SQL | 1,000 snapshots | Live load levels (`SEA`, `SDA`, `LSD`) |
-
----
-
-## 4. Relational Architecture & BCNF Normalization
-
-All 12 relations in PostgreSQL satisfy **Boyce-Codd Normal Form (BCNF)**: for every non-trivial functional dependency $X \rightarrow Y$, $X$ is a superkey.
-
 ![ER Diagram](diagrams/er_diagram.png)
 
-### BCNF Decomposition & Functional Dependencies
+The full report lives in [`transiq.md`](transiq.md) (dataset strategy, BCNF functional dependency proofs, advanced SQL, Cypher traversal). The frontend design system lives in [`DESIGN.md`](DESIGN.md).
 
-| Table | Primary Key | Functional Dependencies | BCNF Satisfied |
-| :--- | :--- | :--- | :--- |
-| `hdb_building` | `postal_code` | `postal_code` $\rightarrow$ `block_no`, `street_name`, `town`, `lat`, `lon`, `geom` | Yes (PK) |
-| `covered_linkway` | `linkway_id` | `linkway_id` $\rightarrow$ `length_meters`, `is_barrier_free`, `roof_condition`, `geom` | Yes (PK) |
-| `transit_stop` | `stop_code` | `stop_code` $\rightarrow$ `stop_name`, `stop_type`, `mrt_line_code`, `has_lift`, `lat`, `lon`, `geom` | Yes (PK) |
-| `transit_service` | `service_no` | `service_no` $\rightarrow$ `operator`, `mode` | Yes (PK) |
-| `transit_route_segment` | `(service_no, direction, stop_sequence)` | `(service_no, direction, stop_sequence)` $\rightarrow$ `from_stop`, `to_stop`, `time_min`, `dist_km` | Yes (Composite PK) |
-| `linkway_stop_access` | `(linkway_id, stop_code)` | `(linkway_id, stop_code)` $\rightarrow$ `walk_distance_m`, `is_sheltered` | Yes (Composite PK) |
-| `commuter_profile` | `user_id` | `user_id` $\rightarrow$ `email`, `preferred_mode`; `email` $\rightarrow$ `user_id` | Yes (Both Superkeys) |
-| `saved_route` | `route_id` | `route_id` $\rightarrow$ `route_name`, `origin_postal`, `dest_postal`, `preferred_mode` | Yes (PK) |
-| `commuter_saved_route` | `(user_id, route_id)` | `(user_id, route_id)` $\rightarrow$ `saved_at` | Yes (Composite PK) |
-| `saved_route_stop` | `(route_id, stop_code, stop_order)` | `(route_id, stop_code, stop_order)` $\rightarrow$ `leg_mode` | Yes (Composite PK) |
-| `historical_congestion_log` | `log_id` | `log_id` $\rightarrow$ `stop_code`, `day_type`, `hour_of_day`, `pt_type`, `crowd_index`, `volume` | Yes (PK) |
-| `live_crowd_snapshot` | `snapshot_id` | `snapshot_id` $\rightarrow$ `stop_code`, `service_no`, `load_level`, `recorded_at` | Yes (PK) |
+## Data
 
-### Analytical Views
-1. `v_sheltered_access`: Pre-computes HDB-to-transit pedestrian shelter within 500m via PostGIS GiST index.
-2. `v_peak_congestion`: Computes rolling 3-hour moving averages and hourly congestion ranks using window functions (`AVG() OVER (PARTITION BY ...)`).
-3. `v_comfort_routes`: Filtered route itinerary view joining saved routes, commuter profiles, and transit stops for comfort-seeking commuters.
+Ten authentic datasets from Singapore government repositories (LTA DataMall, Data.gov.sg, OneMap):
 
----
+| Dataset | Source | Format | Records |
+| :--- | :--- | :--- | ---: |
+| Covered Linkway Network | LTA DataMall | Shapefile (ZIP) | 7,183 |
+| HDB Property Information | Data.gov.sg | CSV | 13,389 |
+| Singapore Building Geocodes | OneMap / DataMall | JSON | 141,726 |
+| Bus Stops Islandwide | LTA DataMall | JSON | 5,209 |
+| Bus Routes & Sequences | LTA DataMall | JSON | 26,036 |
+| Bus Services | LTA DataMall | JSON | 808 |
+| MRT/LRT Station Exits | Data.gov.sg | GeoJSON | 613 |
+| MRT Network Sequences | LTA Operating Schedules | JSON | 326 |
+| Historical Congestion Logs | LTA Passenger Volume OD | SQL COPY | 53,775 |
+| Live Crowd Snapshots | LTA Platform Telemetry | Dynamic SQL | 1,000 |
 
-## 5. Non-Relational Graph Model & Cypher Traversal
+## Results
 
-### Graph Projection Topology
-- **Node Labels:**
-  - `(:HDBBlock {postal_code, block_no, street_name, town, lat, lon})`
-  - `(:BusStop {code, name, lat, lon})`
-  - `(:MRTExit {id, name, station_code, lat, lon})`
-  - `(:CommercialBuilding {postal_code, name, lat, lon})`
-- **Relationship Types:**
-  - `[:SHELTERED_WALK {distance_m, is_covered: true, barrier_free: true}]`
-  - `[:UNSHELTERED_WALK {distance_m, is_covered: false}]`
-  - `[:TRANSIT_RIDE {service, avg_duration_min, distance_km, live_load}]`
-  - `[:STATION_TRANSFER {walking_time_min, is_sheltered: true, escalator_count}]`
+Benchmarks across 5 query pairs, measured with `EXPLAIN (ANALYZE, BUFFERS)` on PostgreSQL and the Neo4j profiler:
 
-### Multi-Objective Weighted Scoring Formula
-Commuter paths are scored and discovered through soft penalty weighting:
-$$\text{Score} = \text{BaseTime} + (d_{\text{unsheltered}} \times W_{\text{unsh}}) + (N_{\text{lsd}} \times W_{\text{crowd}}) + (N_{\text{transfers}} \times W_{\text{trans}})$$
+| Optimization | Naive (A) | Optimized (B) | Speedup |
+| :--- | ---: | ---: | ---: |
+| Unsheltered stops (`NOT IN` → `NOT EXISTS`) | 16.07 ms | 9.34 ms | 1.7x |
+| Sheltered interchanges (`INTERSECT` → `INNER JOIN`) | 4.46 ms | 3.87 ms | 1.2x |
+| Peak congestion ranking (self-join → `AVG() OVER (PARTITION BY)`) | 1.53 ms | 0.45 ms | 3.4x |
+| Proximity to linkway (`ST_Distance` → `ST_DWithin` + GiST) | 78.31 ms | 0.11 ms | 686.9x |
+| Multi-hop route (recursive SQL CTE → Cypher traversal) | 219.26 ms | 17.85 ms | 12.3x |
 
-| Commuter Mode | Optimization Goal | $W_{\text{unsh}}$ | $W_{\text{crowd}}$ | $W_{\text{trans}}$ | Optional Strict Filter |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Rain & Sun Shield** | Maximize covered linkways | 0.08 min/m | 2.0 min | 5.0 min | Rejects any route with unsheltered walking |
-| **Comfort & Seats** | Avoid crush-load buses | 0.02 min/m | 20.0 min | 5.0 min | Rejects any route containing `LSD` transit legs |
-| **Least Transfers** | Minimize step count & lines | 0.02 min/m | 5.0 min | 25.0 min | Hard cap on transfers, enforces barrier-free ramps |
-| **Fastest** | Shortest journey duration | 0.005 min/m | 0.5 min | 1.0 min | Pure minimum elapsed transit time |
+## Quickstart
 
----
+Prerequisites: [Docker Desktop](https://www.docker.com/products/docker-desktop/) running, and [`uv`](https://docs.astral.sh/uv/) for host-side scripts.
 
-## 6. Query Optimization & EXPLAIN ANALYZE Matrix
+```bash
+# macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-To fulfill module requirements on execution plan optimization, TRANSIQ benchmarks 5 query pairs comparing alternative implementations using PostgreSQL `EXPLAIN (ANALYZE, BUFFERS)` and Neo4j profiler:
+1. Clone and configure:
 
-| # | Optimization Objective | Formulation A (Naive) | Formulation B (Optimized) | Runtime A | Runtime B | Measured Speedup | Execution Plan Evidence |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1** | Unsheltered Bus Stops | `NOT IN` subquery | Correlated `NOT EXISTS` | 16.07 ms | 9.34 ms | **1.7x** | Eliminates full table scan & NULL hazard; buffer hits drop from 1,651 to 263. |
-| **2** | Sheltered Interchanges | `INTERSECT` set operation | `INNER JOIN` on access keys | 4.46 ms | 3.87 ms | **1.2x** | Replaces temporary HashAggregate set operation with indexed B-Tree join. |
-| **3** | Peak Congestion Ranking | Correlated self-join per hour | `AVG() OVER (PARTITION BY)` | 1.53 ms | 0.45 ms | **3.4x** | Eliminates $O(N^2)$ repetitive scans; executes in a single sequential pass. |
-| **4** | Proximity to Linkway | Brute-force `ST_Distance` | `ST_DWithin` with GiST index | 78.31 ms | 0.11 ms | **686.9x** | Bypasses 7,183 polygon distance calculations via GiST R-Tree bounding box pruning. |
-| **5** | Multi-Hop Transit Route | Recursive SQL CTE | Native Cypher Graph Traversal | 219.26 ms | 17.85 ms | **12.3x** | Avoids recursive SQL memory stack joins via physical pointer hopping in Neo4j. |
-
----
-
-## 7. Quickstart Guide
-
-### Supported Environments & Prerequisites
-TRANSIQ is tested and supported exclusively on:
-1. **Apple Silicon Mac:** macOS on Apple M-Series chips (M1 / M2 / M3 / M4, ARM64) with Docker Desktop.
-2. **Windows 10 / 11 PC:** Intel or AMD x86_64 (AMD64) with Docker Desktop (WSL2 backend enabled).
-
-**Required Tools:**
-- **Docker Desktop:** Installed and running (Rosetta 2 enabled on Mac; WSL2 backend enabled on Windows).
-- **Python Package Manager (`uv`):**
-  - **macOS (Terminal):** `curl -LsSf https://astral.sh/uv/install.sh | sh`
-  - **Windows (PowerShell):** `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
-
----
-
-### 1. Clone & Set Up Environment
 ```bash
 git clone https://github.com/adoreblvnk/transiq.git
 cd transiq
-
-# Copy environment variables (LTA DataMall & DB credentials pre-configured)
 cp .env.example .env
 ```
 
-### 2. Start Services via Docker Compose
+2. Place the raw upstream datasets in `data/raw/`: `bus_stops.json`, `bus_routes.json`, `bus_services.json`, `buildings.json`, `hdb_property_info.csv`, `mrt_exits.geojson`, `CoveredLinkWay.zip`. Upstream government data is not committed to the repository.
+
+3. Start the services (Postgres, Neo4j, FastAPI). Compose initializes the schema automatically:
+
 ```bash
 docker compose up -d
 ```
-This spins up:
-- `transiq_postgres` (Port 5432) — PostgreSQL 16 with PostGIS 3.4
-- `transiq_neo4j` (Ports 7474, 7687) — Neo4j 5 Community
-- `transiq_api` (Port 8000) — FastAPI Query Backend
-- `transiq_ui` (Port 8501) — Streamlit Interactive Dashboard
 
-### 3. Ingest Data & Project Graph (Automated)
+4. Ingest the data and project the graph. Databases start empty; these fill them:
+
 ```bash
-# Ingest 10 authentic Singapore datasets into PostgreSQL + PostGIS
-uv run python scripts/ingest_lta.py
-
-# Project relational tables into Neo4j graph via batched UNWIND
-uv run python scripts/sync_pg_to_neo4j.py
-
-# Run benchmark query suite
-uv run python scripts/benchmark_queries.py
+uv run scripts/ingest_lta.py        # load all datasets into PostgreSQL + PostGIS
+uv run scripts/sync_pg_to_neo4j.py  # batched Cypher UNWIND projection into Neo4j
 ```
 
-### 4. Run Verification & Test Suites
+5. Verify:
+
 ```bash
-# Run automated pytest suite (12 tests covering CRUD, atomic transactions & views)
 uv run pytest tests/test_api.py -v
-
-# Run full system smoke verification across all 12 tables & Neo4j topology
-uv run python scripts/smoke_verify.py
-
-# Run native pgbench concurrency benchmarks:
-bash scripts/run_pgbench.sh      # macOS (Apple Silicon Terminal)
-.\scripts\run_pgbench.ps1       # Windows (PowerShell)
-
-# Run statistical hyperfine benchmarks across query formulations
-bash scripts/run_hyperfine.sh
+uv run scripts/smoke_verify.py
+uv run scripts/benchmark_queries.py
 ```
 
-### 5. Access Interfaces
-- **Streamlit Web Dashboard:** [http://localhost:8501](http://localhost:8501)
-- **FastAPI Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Neo4j Graph Browser:** [http://localhost:7474](http://localhost:7474) (User: `neo4j`, Password: `transiq_secret`)
+Optional: `bash scripts/run_pgbench.sh` and `bash scripts/run_hyperfine.sh` for native concurrency and statistical query benchmarks.
 
+## Access
 
-### 6. Teardown & Reset Environment
+| Interface | URL |
+| :--- | :--- |
+| Web application (FastAPI serves `frontend/`) | http://localhost:8000 |
+| Swagger docs | http://localhost:8000/docs |
+| Neo4j Browser | http://localhost:7474 (`neo4j` / `transiq_secret`) |
+
+The frontend offers five commuter modes: Fastest (default), Balanced (shelter + comfort), Fully Sheltered (100% covered, with a strict filter toggle), Less Crowd, and Fewer Transfers. It includes a Leaflet map on OneMap tiles, SVG congestion and benchmark charts, and a live WAL durability tester (`synchronous_commit` ON vs OFF).
+
+## Teardown
+
 ```bash
-# Stop and remove all running containers (preserves database data volumes):
-docker compose down
-
-# Full clean reset (stops containers AND wipes database data volumes for a fresh state):
-docker compose down -v
+docker compose down    # stops containers, keeps data volumes
+docker compose down -v # also wipes database volumes for a fresh start
 ```
----
 
-## 8. Web Dashboard Interactive User Manual
+## Contributors (Team G42)
 
-The Streamlit web interface is available at `http://localhost:8501` and is organized into three operational tabs:
-
-### Tab 1: 🗺️ Sheltered Transit Router
-1. **Select Commuter Profile & Anchors (Sidebar):**
-   - Choose a commuter profile (e.g. `joseph.poon@sit.singaporetech.edu.sg`).
-   - Select an Origin HDB (e.g. `Blk 183 Boon Lay Ave - 640183`) and Destination (e.g. `Jurong Point Mall - 648886` or other town anchors).
-2. **Choose Optimization Mode:**
-   - **Rain & Sun Shield:** Maximizes covered walkway walking, applying heavy soft penalties ($0.08\text{ min/m}$) to unsheltered walking.
-   - **Comfort & Seats:** Heavily penalizes crowded transit legs ($20\text{ min}$ penalty per `LSD` crush-load bus/train).
-   - **Least Transfers:** Penalizes vehicle transfers ($25\text{ min}$ per change) and enforces barrier-free accessibility.
-   - **Fastest:** Baseline shortest travel time.
-3. **Optional Strict Filter Toggle:**
-   - Flip "Strict Compliance Filter" to reject non-compliant routes entirely (e.g. absolute zero unsheltered walking).
-4. **Search & Inspect Itinerary:**
-   - Click **"Find Sheltered Route"**.
-   - Review the Interactive Folium Map: Green paths denote sheltered covered linkways; amber/red badges display live vehicle crowd levels.
-   - Inspect the Step-by-Step Navigation cards with walking distance, transit line number, and shelter badges.
-   - Click **"Save to Commuter Profile"** to execute an atomic multi-table transaction inserting into `saved_route`, `commuter_saved_route`, and `saved_route_stop`.
-
-### Tab 2: 📊 Analytics & Materialized Views
-1. **Sheltered Access Query (`v_sheltered_access` & `mv_sheltered_access`):**
-   - Enter a 6-digit postal code to inspect nearby covered linkways, barrier-free access flags, and roof conditions.
-   - Evaluated as an $O(1)$ read from the pre-computed materialized view.
-2. **Peak Hour Congestion Rankings (`v_peak_congestion`):**
-   - Displays morning peak window (07:00–09:00) congestion rankings computed using analytic window functions (`AVG() OVER` and `DENSE_RANK()`).
-3. **Fleet Crowding Distribution:**
-   - View live crowd levels across bus and rail fleets (`SEA` Seats Available, `SDA` Standing Available, `LSD` Limited Standing).
-
-### Tab 3: ⚡ Database Performance, Durability & EXPLAIN Proofs
-1. **Query Optimization Matrix (Pairs 1 to 5):**
-   - Inspect execution time comparisons between naive Formulation A and optimized Formulation B.
-   - Click **"Run Live Benchmark Suite Now"** to execute live `EXPLAIN (ANALYZE, BUFFERS)` queries in PostgreSQL and Profiling in Neo4j.
-   - Expand query cards to inspect the underlying SQL execution plans and speedup factors.
-2. **Interactive WAL Durability Test (`synchronous_commit`):**
-   - Select commit mode: `Strict ACID (synchronous_commit = ON)` vs `High-Throughput (synchronous_commit = OFF)`.
-   - Adjust batch size slider (100 to 1,000 updates).
-   - Click **"Test Live Telemetry Ingestion"** to execute live batch mutations on `live_crowd_snapshot`.
-   - Observe real-time metrics showing execution duration (ms) and throughput (updates/sec) demonstrating the impact of synchronous disk `fsync` versus in-memory WAL buffering.
-
----
-
-## 9. Design System: Technical Editorial Brutalism
-
-The TRANSIQ web interface follows an authentic architectural and transit engineering visual standard documented in [`DESIGN.md`](DESIGN.md):
-- **North Star:** "The Technical Operations Blueprint"
-- **Palette:** Off-white drafting paper (`#F8F9FA`), pure white panels (`#FFFFFF`), deep charcoal ink (`#111827`), rust signal accent (`#9A3412`), forest green shelter (`#0F6738`).
-- **Geometry:** Crisp 2px corners (`--radius: 2px`), 2px solid ink borders, tactile 2px offset drop shadows.
-- **Typography:** `IBM Plex Sans` (interface) and `IBM Plex Mono` (metadata, query plans, telemetry).
-- **Standards:** WCAG 2.2 AA compliant contrast ($\ge 4.5:1$), responsive SVG visualizations, and 100vh pinned single-page architecture.
-
-## 10. Deliverables & Rubric Compliance Matrix
-| Rubric Component | Weight | Standard | TRANSIQ Evidence & Implementation |
-| :--- | :--- | :--- | :--- |
-| **Project Quality & Implementation** | **40%** | Innovative, sufficient authentic data, dual-DB | Door-to-door sheltered router; 10 authentic datasets (LTA & Data.gov.sg); 12 BCNF tables, 3 views, 6 SQL patterns; Neo4j graph with 22,000 nodes & 244,000 edges; 5-pair EXPLAIN ANALYZE matrix with up to 686x speedup. |
-| **Final Report Quality** | **25%** | Comprehensive, implementation details, analysis | Complete DDL schema, ERD, formal BCNF functional dependency proofs for all 12 relations, Cypher traversal formulations, and scalability analysis. |
-| **Presentation Quality** | **25%** | Clear, logical, results, conclusions | Streamlit live dashboard, interactive mode selector, side-by-side latency viewer, and clear trade-off analysis. |
-| **Project Proposal** | **10%** | Clear scope, planning, coverage | 2-page proposal aligned, Gantt timeline, and team member task allocations. |
-
----
-
-## 11. Contributors (Team G42)
-
-- **Joseph Poon (2501079)** — Data Engineering, PostGIS Spatial Buffers, Ingestion Pipeline
-- **Zayne Nicholas Lee (2503844)** — Relational Modeling, BCNF Normalization, PostgreSQL DDL
-- **Tan Yan Qi (2500030)** — Neo4j Graph Projection, Cypher Traversal, Graph Optimization
-- **Annie Goh (2503469)** — FastAPI Query Backend, REST Endpoints, psycopg3 Connection Pool
-- **Ryan Ke (2501911)** — Streamlit UI Dashboard, Folium Map Integration, Hyperfine Benchmarking
+- **Joseph Poon (2501079)** — Data engineering, PostGIS spatial buffers, ingestion pipeline
+- **Zayne Nicholas Lee (2503844)** — Relational modeling, BCNF normalization, PostgreSQL DDL
+- **Tan Yan Qi (2500030)** — Neo4j graph projection, Cypher traversal, graph optimization
+- **Annie Goh (2503469)** — FastAPI query backend, REST endpoints, psycopg3 connection pool
+- **Ryan Ke (2501911)** — Frontend dashboard, Leaflet map integration, hyperfine benchmarking
