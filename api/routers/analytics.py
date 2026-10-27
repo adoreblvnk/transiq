@@ -1,5 +1,6 @@
 """Router for analytical views and crowd density telemetry."""
 
+from typing import Optional
 from fastapi import APIRouter, Query
 from api.services.db import get_pg_connection
 
@@ -46,24 +47,55 @@ def refresh_materialized_views():
 
 
 @router.get("/peak_congestion")
-def get_peak_congestion(limit: int = 15):
-    """Query View 2: v_peak_congestion with window functions."""
+def get_peak_congestion(
+    limit: int = 15,
+    search: Optional[str] = None,
+    mode: Optional[str] = None
+):
+    """Query View 2: v_peak_congestion with window functions and parameterized station search."""
     with get_pg_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
+            if search and search.strip():
+                clean_search = f"%{search.strip()}%"
+                mode_clause = ""
+                if mode and mode.upper() in ("MRT", "BUS"):
+                    mode_clause = "AND ts.stop_type IN ('MRT_STATION', 'MRT_EXIT')" if mode.upper() == "MRT" else "AND ts.stop_type = 'BUS_STOP'"
+
+                query = f"""
+                    SELECT 
+                        vpc.stop_code, ts.stop_name, ts.stop_type,
+                        MAX(vpc.hour_of_day) AS hour_of_day,
+                        MAX(vpc.commuter_volume) AS commuter_volume,
+                        MAX(vpc.crowd_index) AS crowd_index,
+                        ROUND(AVG(vpc.rolling_3hr_avg)::numeric, 1) AS rolling_3hr_avg,
+                        MIN(vpc.congestion_rank) AS congestion_rank
+                    FROM v_peak_congestion vpc
+                    JOIN transit_stop ts ON vpc.stop_code = ts.stop_code
+                    WHERE (ts.stop_name ILIKE %s OR ts.stop_code ILIKE %s) {mode_clause}
+                    GROUP BY vpc.stop_code, ts.stop_name, ts.stop_type
+                    ORDER BY MIN(vpc.congestion_rank) ASC, MAX(vpc.commuter_volume) DESC
+                    LIMIT %s;
                 """
-                SELECT 
-                    vpc.stop_code, ts.stop_name, ts.stop_type,
-                    vpc.hour_of_day, vpc.commuter_volume, vpc.crowd_index,
-                    ROUND(vpc.rolling_3hr_avg::numeric, 1) AS rolling_3hr_avg,
-                    vpc.congestion_rank
-                FROM v_peak_congestion vpc
-                JOIN transit_stop ts ON vpc.stop_code = ts.stop_code
-                ORDER BY vpc.congestion_rank ASC, vpc.commuter_volume DESC
-                LIMIT %s;
-                """,
-                (limit,)
-            )
+                cur.execute(query, (clean_search, clean_search, limit))
+            else:
+                mode_clause = ""
+                if mode and mode.upper() in ("MRT", "BUS"):
+                    mode_clause = "WHERE ts.stop_type IN ('MRT_STATION', 'MRT_EXIT')" if mode.upper() == "MRT" else "WHERE ts.stop_type = 'BUS_STOP'"
+
+                query = f"""
+                    SELECT 
+                        vpc.stop_code, ts.stop_name, ts.stop_type,
+                        vpc.hour_of_day, vpc.commuter_volume, vpc.crowd_index,
+                        ROUND(vpc.rolling_3hr_avg::numeric, 1) AS rolling_3hr_avg,
+                        vpc.congestion_rank
+                    FROM v_peak_congestion vpc
+                    JOIN transit_stop ts ON vpc.stop_code = ts.stop_code
+                    {mode_clause}
+                    ORDER BY vpc.congestion_rank ASC, vpc.commuter_volume DESC
+                    LIMIT %s;
+                """
+                cur.execute(query, (limit,))
+
             rows = cur.fetchall()
             return [
                 {

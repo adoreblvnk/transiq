@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from api.services.db import get_neo4j_session, get_pg_connection
-from api.services.onemap import search_address, get_onemap_token
+from api.services.onemap import search_address, get_onemap_token, get_route_geometry
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 CATALOG_FILE = ROOT_DIR / "data" / "verified_88_locations.json"
@@ -401,7 +401,7 @@ def search_transit_routes(req: RouteSearchRequest):
     MATCH (dest {postal_code: $dest_postal})
 
     MATCH (start)-[w1:SHELTERED_WALK|UNSHELTERED_WALK]->(s1)
-    WHERE s1:BusStop OR s1:MRTExit
+    WHERE (s1:BusStop OR s1:MRTExit) AND w1.distance_m <= 450.0
     MATCH tp = (s1)-[:TRANSIT_RIDE|STATION_TRANSFER*1..4]->(s2)
     WHERE (s2:BusStop OR s2:MRTExit) AND (
         $strict_mode = false OR (
@@ -410,12 +410,12 @@ def search_transit_routes(req: RouteSearchRequest):
         )
     )
     MATCH (s2)-[w2:SHELTERED_WALK|UNSHELTERED_WALK]->(dest)
-    WHERE $strict_mode = false OR type(w2) = 'SHELTERED_WALK'
-
+    WHERE w2.distance_m <= 450.0 AND ($strict_mode = false OR type(w2) = 'SHELTERED_WALK')
     WITH start, dest, w1, tp, w2,
          [r IN relationships(tp) WHERE type(r) = 'TRANSIT_RIDE'] AS transit_legs
     WITH start, dest, w1, tp, w2, transit_legs,
-         reduce(t = 0.0, r IN transit_legs | t + r.avg_duration_min) AS base_travel_time,
+         reduce(t = 0.0, r IN transit_legs | t + coalesce(r.avg_duration_min, 3.0)) +
+         ((coalesce(w1.distance_m, 50.0) + coalesce(w2.distance_m, 50.0)) / 75.0) AS base_travel_time,
          (CASE WHEN type(w1) = 'UNSHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
           CASE WHEN type(w2) = 'UNSHELTERED_WALK' THEN w2.distance_m ELSE 0.0 END) AS unsheltered_m,
          (CASE WHEN type(w1) = 'SHELTERED_WALK' THEN w1.distance_m ELSE 0.0 END +
@@ -647,6 +647,24 @@ def search_transit_routes(req: RouteSearchRequest):
                     ))
 
             collapsed = collapse_consecutive_transit_steps(steps)
+            for s in collapsed:
+                if s.coordinates and len(s.coordinates) == 2:
+                    p1, p2 = s.coordinates[0], s.coordinates[1]
+                    if s.step_type == "TRANSIT" and s.transit_mode == "BUS" and (s.distance_m or 0) > 750:
+                        s.coordinates = get_route_geometry(p1[0], p1[1], p2[0], p2[1], route_type="drive")
+                    elif s.step_type == "WALK" and (s.distance_m or 0) > 200:
+                        s.coordinates = get_route_geometry(p1[0], p1[1], p2[0], p2[1], route_type="walk")
+
+            rich_coords = []
+            for s in collapsed:
+                if s.coordinates:
+                    if not rich_coords:
+                        rich_coords.extend(s.coordinates)
+                    else:
+                        rich_coords.extend(s.coordinates[1:] if len(s.coordinates) > 1 else s.coordinates)
+            if not rich_coords:
+                rich_coords = coords
+
             real_transfers = max(0, len([s for s in collapsed if s.step_type == "TRANSIT"]) - 1)
             b_time = float(c["base_travel_time"])
             unsh_m = float(c["unsheltered_m"])
@@ -670,7 +688,7 @@ def search_transit_routes(req: RouteSearchRequest):
                 "lsd_leg_count": lsd_cnt,
                 "itinerary_nodes": [str(x) for x in c["itinerary"]],
                 "steps": collapsed,
-                "coordinates": coords
+                "coordinates": rich_coords
             })
 
         # Sort candidates strictly by rescore ascending

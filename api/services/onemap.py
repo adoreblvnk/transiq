@@ -88,3 +88,84 @@ def search_address(query: str) -> List[Dict[str, Any]]:
             unique_out.append(o)
 
     return unique_out
+
+def decode_polyline(polyline_str: str) -> List[List[float]]:
+    """Decode a Google-encoded polyline string into [[lat, lon], ...] coordinates."""
+    if not polyline_str:
+        return []
+    index, lat, lng = 0, 0, 0
+    coordinates = []
+    length = len(polyline_str)
+    while index < length:
+        shift, result = 0, 0
+        while True:
+            byte = ord(polyline_str[index]) - 63
+            index += 1
+            result |= (byte & 0x1f) << shift
+            shift += 5
+            if byte < 0x20:
+                break
+        dlat = ~(result >> 1) if (result & 1) else (result >> 1)
+        lat += dlat
+
+        shift, result = 0, 0
+        while True:
+            byte = ord(polyline_str[index]) - 63
+            index += 1
+            result |= (byte & 0x1f) << shift
+            shift += 5
+            if byte < 0x20:
+                break
+        dlng = ~(result >> 1) if (result & 1) else (result >> 1)
+        lng += dlng
+
+        coordinates.append([round(lat / 1e5, 6), round(lng / 1e5, 6)])
+    return coordinates
+
+
+_geometry_cache: Dict[str, List[List[float]]] = {}
+
+
+def get_route_geometry(
+    start_lat: float,
+    start_lon: float,
+    end_lat: float,
+    end_lon: float,
+    route_type: str = "drive"
+) -> List[List[float]]:
+    """
+    Fetch real-world road or pedestrian route geometry from OneMap Routing API.
+    Prevents unrealistic 'ruler' diagonal lines across water bodies or restricted areas.
+    Caches results in-memory for sub-millisecond retrieval.
+    """
+    fallback = [[start_lat, start_lon], [end_lat, end_lon]]
+    # Avoid querying for negligible distance
+    d_lat = abs(start_lat - end_lat)
+    d_lon = abs(start_lon - end_lon)
+    if d_lat < 0.0005 and d_lon < 0.0005:
+        return fallback
+
+    cache_key = f"{round(start_lat, 4)},{round(start_lon, 4)}->{round(end_lat, 4)},{round(end_lon, 4)}:{route_type}"
+    if cache_key in _geometry_cache:
+        return _geometry_cache[cache_key]
+
+    try:
+        token = get_onemap_token()
+        headers = {"Authorization": token} if token else {}
+        url = (
+            f"https://www.onemap.gov.sg/api/public/routingsvc/route"
+            f"?start={start_lat},{start_lon}&end={end_lat},{end_lon}&routeType={route_type}"
+        )
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            encoded = data.get("route_geometry")
+            if encoded:
+                coords = decode_polyline(encoded)
+                if len(coords) >= 2:
+                    _geometry_cache[cache_key] = coords
+                    return coords
+    except Exception:
+        pass
+
+    return fallback
