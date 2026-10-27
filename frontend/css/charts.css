@@ -52,8 +52,8 @@
 
 .chart-axis-text {
   font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  fill: var(--ink-faint);
+  font-size: 11px;
+  fill: var(--ink-muted);
 }
 
 .chart-bar {
@@ -101,6 +101,70 @@
   font-size: var(--fs-sub);
   color: var(--ink-muted);
 }
+
+.kpi-card.clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kpi-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 3px 3px 0 var(--border);
+  background: var(--surface-hover);
+}
+
+.kpi-card.clickable:active {
+  transform: translateY(0);
+  box-shadow: 1px 1px 0 var(--border);
+}
+
+.kpi-drilldown-hint {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--signal);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.kpi-micro-chart {
+  margin-top: 4px;
+  width: 100%;
+  display: block;
+}
+
+.kpi-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.kpi-legend-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.kpi-legend-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-muted);
+}
+
+.kpi-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 
 /* LayerCake Proportional Timeline Bar in Route Card */
 .journey-timeline-wrap {

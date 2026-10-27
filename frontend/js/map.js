@@ -22,37 +22,101 @@ function initMap() {
 }
 
 function renderMap(route) {
-  if (!AppState.leafletMap || !route.coordinates || route.coordinates.length === 0) return;
+  if (!AppState.leafletMap || !route) return;
 
   AppState.mapLayers.forEach(l => AppState.leafletMap.removeLayer(l));
   AppState.mapLayers = [];
 
-  const coords = route.coordinates;
+  // Draw active route with distinct multi-modal leg colors
+  let activeBounds = null;
+  if (route.steps && route.steps.length > 0) {
+    route.steps.forEach(step => {
+      if (!step.coordinates || step.coordinates.length < 2) return;
+      let color = '#1D4ED8';
+      let weight = 5;
+      let dashArray = null;
+      let opacity = 0.95;
 
-  const poly = L.polyline(coords, {
-    color: route.unsheltered_m === 0 ? '#0F6738' : '#1D4ED8',
-    weight: 5,
-    opacity: 0.95
-  }).addTo(AppState.leafletMap);
-  AppState.mapLayers.push(poly);
+      if (step.step_type === 'WALK') {
+        if (step.is_sheltered) {
+          color = '#0F6738';
+          weight = 5;
+        } else {
+          color = '#D97706';
+          weight = 4.5;
+          dashArray = '5, 7';
+        }
+      } else if (step.step_type === 'TRANSIT') {
+        if (step.transit_mode === 'BUS') {
+          color = '#7C3AED';
+          weight = 5;
+        } else {
+          color = '#1D4ED8';
+          weight = 6;
+        }
+      } else if (step.step_type === 'TRANSFER') {
+        color = '#475569';
+        weight = 3.5;
+        dashArray = '4, 4';
+      }
 
-  const startMarker = L.circleMarker(coords[0], {
-    radius: 7,
-    fillColor: '#111827',
-    color: '#FFFFFF',
-    weight: 2,
-    fillOpacity: 1
-  }).addTo(AppState.leafletMap).bindPopup(`<strong>Origin:</strong> ${AppState.originText}`);
-  AppState.mapLayers.push(startMarker);
+      const legPoly = L.polyline(step.coordinates, {
+        color: color,
+        weight: weight,
+        opacity: opacity,
+        dashArray: dashArray
+      }).addTo(AppState.leafletMap);
 
-  const endMarker = L.circleMarker(coords[coords.length - 1], {
-    radius: 8,
-    fillColor: '#9A3412',
-    color: '#FFFFFF',
-    weight: 2,
-    fillOpacity: 1
-  }).addTo(AppState.leafletMap).bindPopup(`<strong>Destination:</strong> ${AppState.destText}`);
-  AppState.mapLayers.push(endMarker);
+      const modeTitle = step.transit_mode || step.step_type;
+      const svcInfo = step.service ? ` [${step.service}]` : '';
+      const shBadge = step.is_sheltered ? '☂ Sheltered' : '☀ Unsheltered';
+      legPoly.bindTooltip(`<strong>${modeTitle}${svcInfo}</strong><br>${step.from_name} → ${step.to_name}<br>${Math.round(step.distance_m || 0)}m &bull; ${step.duration_min} min &bull; ${shBadge}`, { sticky: true });
 
-  AppState.leafletMap.fitBounds(poly.getBounds(), { padding: [40, 40] });
+      AppState.mapLayers.push(legPoly);
+      if (!activeBounds) {
+        activeBounds = legPoly.getBounds();
+      } else {
+        activeBounds.extend(legPoly.getBounds());
+      }
+    });
+  }
+
+  // Fallback if steps had no individual coordinates
+  if (!activeBounds && route.coordinates && route.coordinates.length > 0) {
+    const poly = L.polyline(route.coordinates, {
+      color: route.unsheltered_m === 0 ? '#0F6738' : '#1D4ED8',
+      weight: 5,
+      opacity: 0.95
+    }).addTo(AppState.leafletMap);
+    AppState.mapLayers.push(poly);
+    activeBounds = poly.getBounds();
+  }
+
+  // 3. Add origin and destination markers
+  if (route.coordinates && route.coordinates.length > 0) {
+    const startCoord = route.coordinates[0];
+    const endCoord = route.coordinates[route.coordinates.length - 1];
+
+    const startMarker = L.circleMarker(startCoord, {
+      radius: 7,
+      fillColor: '#111827',
+      color: '#FFFFFF',
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(AppState.leafletMap).bindPopup(`<strong>Origin:</strong> ${AppState.originText}`);
+    AppState.mapLayers.push(startMarker);
+
+    const endMarker = L.circleMarker(endCoord, {
+      radius: 8,
+      fillColor: '#9A3412',
+      color: '#FFFFFF',
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(AppState.leafletMap).bindPopup(`<strong>Destination:</strong> ${AppState.destText}`);
+    AppState.mapLayers.push(endMarker);
+  }
+
+  if (activeBounds && activeBounds.isValid()) {
+    AppState.leafletMap.fitBounds(activeBounds, { padding: [40, 40] });
+  }
 }

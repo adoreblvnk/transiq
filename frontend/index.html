@@ -53,12 +53,6 @@
     </div>
   </header>
 
-  <!-- Mobile Viewport Toggle (Visible only below 860px) -->
-  <div class="mobile-tab-bar" role="region" aria-label="Mobile View Toggle">
-    <button class="mobile-tab-btn active" id="btn-show-itinerary" onclick="setMobileView('itinerary')">Directions</button>
-    <button class="mobile-tab-btn" id="btn-show-map" onclick="setMobileView('map')">Map</button>
-  </div>
-
   <!-- Main Landmark Container -->
   <main class="main-view" id="main-content" role="main">
 
@@ -138,10 +132,6 @@
                 <div class="timeline-segment transit" id="bar-transit" style="width: 65%;" title="Transit Ride"></div>
                 <div class="timeline-segment open" id="bar-open" style="width: 15%;" title="Unsheltered Walk"></div>
               </div>
-              <div class="timeline-legend-row">
-                <span id="txt-bar-walk">Sheltered: 1.4 km</span>
-                <span id="txt-bar-transit">Duration: 1 hr 20 mins</span>
-              </div>
             </div>
 
             <button type="button" class="btn-inspect-query" onclick="openQueryModal()">
@@ -179,16 +169,16 @@
             <span class="telemetry-val" id="map-mode-label">Fastest</span>
           </div>
           <div class="telemetry-item">
-            <span class="telemetry-label">Estimated Time</span>
-            <span class="telemetry-val" id="map-time-label">80 min</span>
-          </div>
-          <div class="telemetry-item">
-            <span class="telemetry-label">Sheltered Distance</span>
-            <span class="telemetry-val" id="map-shelter-label" style="color: var(--shelter);">100%</span>
+            <span class="telemetry-label">Corridor</span>
+            <span class="telemetry-val" id="map-corridor-label">East-West / North-East</span>
           </div>
           <div class="telemetry-item">
             <span class="telemetry-label">Transfers</span>
             <span class="telemetry-val" id="map-transfers-label">2</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Fleet Telemetry</span>
+            <span class="telemetry-val" id="map-fleet-label" style="color: var(--shelter);">Normal Ops</span>
           </div>
         </div>
 
@@ -204,10 +194,14 @@
           </div>
           <div class="map-legend-item">
             <span class="legend-indicator transit"></span>
-            <span>Transit Line (Bus / MRT)</span>
+            <span>MRT Railway Line</span>
           </div>
           <div class="map-legend-item">
-            <span class="legend-indicator open"></span>
+            <span class="legend-indicator bus" style="background: #7C3AED;"></span>
+            <span>Bus Route</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="legend-indicator open" style="background: #D97706;"></span>
             <span>Unsheltered Walk</span>
           </div>
         </div>
@@ -223,142 +217,269 @@
       <div class="data-view-pane">
         <div class="data-container">
           
-          <div class="view-banner">
-            <div>
-              <h2 class="view-title">Transit Crowding Telemetry</h2>
-              <p class="view-desc">Station volume rankings sampled across morning peak passenger OD logs</p>
-            </div>
-            <button class="btn-brutal btn-primary" onclick="triggerMaterializedViewRefresh()" id="btn-refresh-mv">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-              <span>Refresh Materialized View</span>
-            </button>
-          </div>
-
-          <div class="kpi-row">
-            <div class="kpi-card">
-              <span class="kpi-label">Morning Peak Period</span>
-              <span class="kpi-value num">07:00 – 09:00</span>
-            </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Busiest Transit Hub</span>
-              <span class="kpi-value">Jurong East Interchange</span>
-              <span class="kpi-sub">Peak volume across network</span>
-            </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Seat Availability</span>
-              <span class="kpi-value num" style="color: var(--shelter);">74% Seated</span>
-              <span class="kpi-sub">Seats available across surveyed transit</span>
-            </div>
-          </div>
-
-          <!-- LayerCake-Inspired Responsive Column Chart: Hourly Passenger Distribution -->
-          <div class="chart-container">
-            <div class="chart-header">
-              <div>
-                <h3 class="chart-title">Hourly Commuter Density Distribution</h3>
-                <span class="chart-subtitle">Hourly passenger volume with 3-hour moving average</span>
-              </div>
-              <div class="status-pill" style="padding: 2px 8px; font-size: var(--fs-micro);">
-                <span>PEAK WINDOW: 07:00 - 09:00</span>
-              </div>
-            </div>
-            <svg class="layercake-svg" viewBox="0 0 800 220" preserveAspectRatio="xMidYMid meet">
-              <line x1="50" y1="30" x2="780" y2="30" class="chart-grid-line" />
-              <line x1="50" y1="80" x2="780" y2="80" class="chart-grid-line" />
-              <line x1="50" y1="130" x2="780" y2="130" class="chart-grid-line" />
-              <line x1="50" y1="180" x2="780" y2="180" class="chart-axis-line" />
-
-              <text x="40" y="34" class="chart-axis-text" text-anchor="end">50k</text>
-              <text x="40" y="84" class="chart-axis-text" text-anchor="end">35k</text>
-              <text x="40" y="134" class="chart-axis-text" text-anchor="end">20k</text>
-              <text x="40" y="184" class="chart-axis-text" text-anchor="end">0</text>
-
-              <rect x="75" y="145" width="40" height="35" fill="var(--surface-active)" class="chart-bar"><title>06:00 - 12,400 passengers</title></rect>
-              <text x="95" y="200" class="chart-axis-text" text-anchor="middle">06:00</text>
-
-              <rect x="155" y="65" width="40" height="115" fill="var(--signal)" class="chart-bar"><title>07:00 (Peak) - 39,120 passengers</title></rect>
-              <text x="175" y="200" class="chart-axis-text" text-anchor="middle">07:00</text>
-
-              <rect x="235" y="38" width="40" height="142" fill="var(--signal)" class="chart-bar"><title>08:00 (Peak) - 48,210 passengers</title></rect>
-              <text x="255" y="200" class="chart-axis-text" text-anchor="middle">08:00</text>
-
-              <rect x="315" y="78" width="40" height="102" fill="var(--signal)" class="chart-bar"><title>09:00 (Peak) - 34,500 passengers</title></rect>
-              <text x="335" y="200" class="chart-axis-text" text-anchor="middle">09:00</text>
-
-              <rect x="395" y="130" width="40" height="50" fill="var(--surface-active)" class="chart-bar"><title>12:00 - 18,200 passengers</title></rect>
-              <text x="415" y="200" class="chart-axis-text" text-anchor="middle">12:00</text>
-
-              <rect x="475" y="70" width="40" height="110" fill="var(--rain)" class="chart-bar"><title>17:00 (PM Peak) - 37,800 passengers</title></rect>
-              <text x="495" y="200" class="chart-axis-text" text-anchor="middle">17:00</text>
-
-              <rect x="555" y="52" width="40" height="128" fill="var(--rain)" class="chart-bar"><title>18:00 (PM Peak) - 43,600 passengers</title></rect>
-              <text x="575" y="200" class="chart-axis-text" text-anchor="middle">18:00</text>
-
-              <rect x="635" y="90" width="40" height="90" fill="var(--surface-active)" class="chart-bar"><title>19:00 - 29,100 passengers</title></rect>
-              <text x="655" y="200" class="chart-axis-text" text-anchor="middle">19:00</text>
-
-              <rect x="715" y="152" width="40" height="28" fill="var(--surface-active)" class="chart-bar"><title>21:00 - 9,800 passengers</title></rect>
-              <text x="735" y="200" class="chart-axis-text" text-anchor="middle">21:00</text>
-
-              <path d="M 95 150 L 175 75 L 255 50 L 335 85 L 415 135 L 495 78 L 575 60 L 655 98 L 735 155" fill="none" stroke="var(--shelter)" stroke-width="2.5" />
-              <circle cx="175" cy="75" r="4" fill="var(--surface)" stroke="var(--shelter)" stroke-width="2" />
-              <circle cx="255" cy="50" r="4" fill="var(--surface)" stroke="var(--shelter)" stroke-width="2" />
-              <circle cx="335" cy="85" r="4" fill="var(--surface)" stroke="var(--shelter)" stroke-width="2" />
-              <circle cx="495" cy="78" r="4" fill="var(--surface)" stroke="var(--shelter)" stroke-width="2" />
-              <circle cx="575" cy="60" r="4" fill="var(--surface)" stroke="var(--shelter)" stroke-width="2" />
-            </svg>
-          </div>
-
-          <!-- Station Table with Custom TRANSIQ Dropdown Filters -->
-          <div class="data-card">
-            <div class="data-card-header">
-              <div class="data-card-title-group">
-                <h3 class="data-card-title">Peak Station Volume Rankings</h3>
-                <button class="btn-query-inspect" onclick="openSqlModal('window_query')">
-                  <span>(?) View SQL Query</span>
+              <div class="view-banner">
+                <div>
+                  <h2 class="view-title">Transit Crowding Telemetry</h2>
+                  <p class="view-desc">Station volume rankings sampled across morning peak passenger OD logs</p>
+                </div>
+                <button class="btn-brutal btn-primary" onclick="triggerMaterializedViewRefresh()" id="btn-refresh-mv">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                  <span>Refresh Materialized View</span>
                 </button>
               </div>
-              <div class="table-controls">
-                <div class="custom-select" id="select-filter-mode">
-                  <button type="button" class="custom-select-trigger" onclick="toggleCustomSelect('select-filter-mode')" aria-haspopup="listbox" aria-expanded="false">
-                    <span id="label-filter-mode">All Modes</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-                  </button>
-                  <div class="custom-select-menu" role="listbox">
-                    <div class="custom-select-option selected" role="option" onclick="selectCustomOption('select-filter-mode', 'ALL', 'All Modes')">All Modes</div>
-                    <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-mode', 'MRT', 'MRT Stations')">MRT Stations</div>
-                    <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-mode', 'BUS', 'Bus Interchanges')">Bus Interchanges</div>
-                  </div>
+
+              <div class="kpi-row">
+                <!-- Card 1: 24h Diurnal Peak Window Sparkline -->
+                <div class="kpi-card">
+                  <span class="kpi-label">Morning Peak Window</span>
+                  <span class="kpi-value num">07:00 – 09:00</span>
+                  <span class="kpi-sub">Inbound CBD Core Flow</span>
+                  <svg class="kpi-micro-chart" viewBox="0 0 190 32" preserveAspectRatio="none">
+                    <rect x="52" y="2" width="34" height="26" fill="#DBEAFE" opacity="0.6" rx="1"><title>Morning Peak: 07:00–09:00 (Inbound Surge)</title></rect>
+                    <path d="M 10 26 Q 30 25 50 16 T 68 6 T 86 16 T 120 23 T 150 10 T 180 26" fill="none" stroke="#1D4ED8" stroke-width="2" />
+                    <circle cx="68" cy="6" r="3" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"><title>AM Peak at 08:00: 48,210 pax</title></circle>
+                    <line x1="10" y1="28" x2="180" y2="28" stroke="#D1D5DB" stroke-width="1" />
+                    <text x="10" y="32" font-family="var(--font-mono)" font-size="8" fill="#6B7280">06h</text>
+                    <text x="68" y="32" font-family="var(--font-mono)" font-size="8" fill="#1D4ED8" font-weight="700">08h</text>
+                    <text x="150" y="32" font-family="var(--font-mono)" font-size="8" fill="#6B7280">18h</text>
+                  </svg>
                 </div>
 
-                <div class="custom-select" id="select-filter-limit">
-                  <button type="button" class="custom-select-trigger" onclick="toggleCustomSelect('select-filter-limit')" aria-haspopup="listbox" aria-expanded="false">
-                    <span id="label-filter-limit">Top 10</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-                  </button>
-                  <div class="custom-select-menu" role="listbox">
-                    <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-limit', '5', 'Top 5')">Top 5</div>
-                    <div class="custom-select-option selected" role="option" onclick="selectCustomOption('select-filter-limit', '10', 'Top 10')">Top 10</div>
-                    <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-limit', '20', 'Top 20')">Top 20</div>
+                <!-- Card 2: Top-3 Busiest Interchange Bullet Bars -->
+                <div class="kpi-card">
+                  <span class="kpi-label">Busiest Transit Hub</span>
+                  <span class="kpi-value" style="font-size: 18px;">Jurong East</span>
+                  <span class="kpi-sub">Peak Network Bottleneck</span>
+                  <svg class="kpi-micro-chart" viewBox="0 0 190 32" preserveAspectRatio="none">
+                    <!-- Row 1: Jurong East -->
+                    <text x="0" y="8" font-family="var(--font-mono)" font-size="8" fill="#111827">J.East</text>
+                    <rect x="36" y="2" width="112" height="7" fill="#1D4ED8" rx="1"><title>Jurong East: 48,210 passengers/hr</title></rect>
+                    <text x="152" y="8" font-family="var(--font-mono)" font-size="8" fill="#111827" font-weight="600">48k</text>
+                    <!-- Row 2: Woodlands -->
+                    <text x="0" y="18" font-family="var(--font-mono)" font-size="8" fill="#6B7280">Woodl.</text>
+                    <rect x="36" y="12" width="91" height="7" fill="#9CA3AF" rx="1"><title>Woodlands: 39,120 passengers/hr</title></rect>
+                    <text x="132" y="18" font-family="var(--font-mono)" font-size="8" fill="#6B7280">39k</text>
+                    <!-- Row 3: Tampines -->
+                    <text x="0" y="28" font-family="var(--font-mono)" font-size="8" fill="#6B7280">Tamp.</text>
+                    <rect x="36" y="22" width="85" height="7" fill="#D1D5DB" rx="1"><title>Tampines: 36,400 passengers/hr</title></rect>
+                    <text x="126" y="28" font-family="var(--font-mono)" font-size="8" fill="#6B7280">36k</text>
+                  </svg>
+                </div>
+
+                <!-- Card 3: Stacked Fleet Capacity Ratio -->
+                <div class="kpi-card">
+                  <span class="kpi-label">Network Seat Index</span>
+                  <span class="kpi-value num" style="color: var(--shelter);">74% Seated</span>
+                  <span class="kpi-sub">Fleet Crowd Distribution</span>
+                  <svg class="kpi-micro-chart" viewBox="0 0 100 10" preserveAspectRatio="none" style="height: 10px; border-radius: 2px; overflow: hidden;">
+                    <rect x="0" y="0" width="74" height="10" fill="#0F6738"><title>74% Seats Available (SEA)</title></rect>
+                    <rect x="75" y="0" width="20" height="10" fill="#D97706"><title>21% Standing Available (SDA)</title></rect>
+                    <rect x="96" y="0" width="4" height="10" fill="#991B1B"><title>5% Limited Standing (LSD)</title></rect>
+                  </svg>
+                  <div class="kpi-legend-list">
+                    <div class="kpi-legend-row">
+                      <span class="kpi-legend-left"><span class="kpi-legend-dot" style="background: #0F6738;"></span>Seats Available (SEA)</span>
+                      <span class="num" style="font-weight: 700; color: #0F6738;">74%</span>
+                    </div>
+                    <div class="kpi-legend-row">
+                      <span class="kpi-legend-left"><span class="kpi-legend-dot" style="background: #D97706;"></span>Standing Room (SDA)</span>
+                      <span class="num" style="font-weight: 700; color: #D97706;">21%</span>
+                    </div>
+                    <div class="kpi-legend-row">
+                      <span class="kpi-legend-left"><span class="kpi-legend-dot" style="background: #991B1B;"></span>Crush Load (LSD)</span>
+                      <span class="num" style="font-weight: 700; color: #991B1B;">5%</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th class="num" style="width: 60px;">Rank</th>
-                  <th>Station / Interchange</th>
-                  <th>Transit Mode</th>
-                  <th class="num">Hourly Volume</th>
-                  <th class="num">Rolling 3h Average</th>
-                  <th>Crowd Level</th>
-                </tr>
-              </thead>
-              <tbody id="congestion-table-body"></tbody>
-            </table>
-          </div>
 
+
+              <!-- Responsive LayerCake Hourly Density Chart -->
+              <div class="chart-container">
+                <div class="chart-header">
+                  <div>
+                    <h3 class="chart-title">Directional Commuter Density Distribution</h3>
+                    <span class="chart-subtitle">Dual-wave tidal comparison: AM Inbound CBD vs PM Outbound Heartlands</span>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="pill transit" style="font-size: 11px;">● AM Inbound to CBD</span>
+                    <span class="pill crowd" style="font-size: 11px;">● PM Outbound to Heartlands</span>
+                  </div>
+                </div>
+                <svg class="layercake-svg" viewBox="0 0 920 200" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <linearGradient id="am-flow-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#1D4ED8" stop-opacity="0.32" />
+                      <stop offset="100%" stop-color="#1D4ED8" stop-opacity="0.02" />
+                    </linearGradient>
+                    <linearGradient id="pm-flow-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#9A3412" stop-opacity="0.28" />
+                      <stop offset="100%" stop-color="#9A3412" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+
+                  <!-- Grid Lines -->
+                  <line x1="50" y1="25" x2="900" y2="25" class="chart-grid-line" />
+                  <line x1="50" y1="65" x2="900" y2="65" class="chart-grid-line" />
+                  <line x1="50" y1="105" x2="900" y2="105" class="chart-grid-line" />
+                  <line x1="50" y1="145" x2="900" y2="145" class="chart-grid-line" />
+                  <line x1="50" y1="165" x2="900" y2="165" class="chart-axis-line" />
+
+                  <!-- Y-Axis Labels -->
+                  <text x="42" y="29" class="chart-axis-text" text-anchor="end">50k</text>
+                  <text x="42" y="69" class="chart-axis-text" text-anchor="end">35k</text>
+                  <text x="42" y="109" class="chart-axis-text" text-anchor="end">20k</text>
+                  <text x="42" y="149" class="chart-axis-text" text-anchor="end">5k</text>
+
+                  <!-- AM Inbound Wave Area & Line (Peak at 08:00) -->
+                  <path d="M 60 165 L 80 145 L 160 65 L 240 32 L 320 78 L 420 135 L 520 155 L 880 165 Z" fill="url(#am-flow-grad)" />
+                  <path d="M 60 165 L 80 145 L 160 65 L 240 32 L 320 78 L 420 135 L 520 155 L 880 165" fill="none" stroke="#1D4ED8" stroke-width="2.5" />
+                  
+                  <!-- PM Outbound Wave Area & Line (Peak at 18:00) -->
+                  <path d="M 60 165 L 320 160 L 420 140 L 520 120 L 620 68 L 700 48 L 780 88 L 840 138 L 880 165 Z" fill="url(#pm-flow-grad)" />
+                  <path d="M 60 165 L 320 160 L 420 140 L 520 120 L 620 68 L 700 48 L 780 88 L 840 138 L 880 165" fill="none" stroke="#9A3412" stroke-width="2.5" stroke-dasharray="5, 3" />
+
+                  <!-- AM Peak Marker (08:00) -->
+                  <circle cx="240" cy="32" r="4.5" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2.5">
+                    <title>08:00 AM Peak Inbound Flow: 48,210 passengers/hr</title>
+                  </circle>
+                  <text x="240" y="20" class="chart-axis-text" text-anchor="middle" font-weight="700" fill="#1D4ED8">48.2k (AM Peak)</text>
+
+                  <!-- PM Peak Marker (18:00) -->
+                  <circle cx="700" cy="48" r="4.5" fill="#FFFFFF" stroke="#9A3412" stroke-width="2.5">
+                    <title>18:00 PM Peak Outbound Flow: 43,600 passengers/hr</title>
+                  </circle>
+                  <text x="700" y="38" class="chart-axis-text" text-anchor="middle" font-weight="700" fill="#9A3412">43.6k (PM Peak)</text>
+
+                  <!-- X-Axis Timestamps -->
+                  <text x="80" y="184" class="chart-axis-text" text-anchor="middle">06:00</text>
+                  <text x="160" y="184" class="chart-axis-text" text-anchor="middle">07:00</text>
+                  <text x="240" y="184" class="chart-axis-text" text-anchor="middle">08:00</text>
+                  <text x="320" y="184" class="chart-axis-text" text-anchor="middle">09:00</text>
+                  <text x="420" y="184" class="chart-axis-text" text-anchor="middle">12:00</text>
+                  <text x="620" y="184" class="chart-axis-text" text-anchor="middle">17:00</text>
+                  <text x="700" y="184" class="chart-axis-text" text-anchor="middle">18:00</text>
+                  <text x="780" y="184" class="chart-axis-text" text-anchor="middle">19:00</text>
+                  <text x="850" y="184" class="chart-axis-text" text-anchor="middle">21:00</text>
+                </svg>
+              </div>
+
+              <div class="data-card">
+                <div class="data-card-header">
+                  <div class="sub-tab-group" role="tablist" aria-label="Congestion Views">
+                    <button type="button" class="sub-tab-btn active" id="btn-subtab-rankings" role="tab" aria-selected="true" onclick="switchCongestionSubTab('rankings')">
+                      <span>🏆 Peak Rankings</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="btn-subtab-search" role="tab" aria-selected="false" onclick="switchCongestionSubTab('search')">
+                      <span>🔍 Station Search</span>
+                    </button>
+                  </div>
+                  <button class="btn-query-inspect" onclick="openSqlModal('window_query')">
+                    <span>(?) SQL Query</span>
+                  </button>
+                </div>
+
+                <!-- SUB-TAB 1: PEAK STATION RANKINGS -->
+                <div id="subtab-view-rankings">
+                  <div class="table-filter-bar">
+                    <span style="font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 600; color: var(--ink-muted);">Filters:</span>
+                    <div class="table-controls">
+                      <div class="custom-select" id="select-filter-mode">
+                        <button type="button" class="custom-select-trigger" onclick="toggleCustomSelect('select-filter-mode')" aria-haspopup="listbox" aria-expanded="false">
+                          <span id="label-filter-mode">All Modes</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div class="custom-select-menu" role="listbox">
+                          <div class="custom-select-option selected" role="option" onclick="selectCustomOption('select-filter-mode', 'ALL', 'All Modes')">All Modes</div>
+                          <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-mode', 'MRT', 'MRT Stations')">MRT Stations</div>
+                          <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-mode', 'BUS', 'Bus Interchanges')">Bus Interchanges</div>
+                        </div>
+                      </div>
+
+                      <div class="custom-select" id="select-filter-limit">
+                        <button type="button" class="custom-select-trigger" onclick="toggleCustomSelect('select-filter-limit')" aria-haspopup="listbox" aria-expanded="false">
+                          <span id="label-filter-limit">Top 10</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div class="custom-select-menu" role="listbox">
+                          <div class="custom-select-option role="option" onclick="selectCustomOption('select-filter-limit', '5', 'Top 5')">Top 5</div>
+                          <div class="custom-select-option selected" role="option" onclick="selectCustomOption('select-filter-limit', '10', 'Top 10')">Top 10</div>
+                          <div class="custom-select-option" role="option" onclick="selectCustomOption('select-filter-limit', '20', 'Top 20')">Top 20</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-scroll-container">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th class="num" style="width: 50px;">Rank</th>
+                          <th>Station / Interchange</th>
+                          <th>Transit Mode</th>
+                          <th class="num">Hourly Vol</th>
+                          <th class="num">3h Moving Avg</th>
+                          <th>Crowd Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="congestion-table-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- SUB-TAB 2: DEDICATED STATION SEARCH -->
+                <div id="subtab-view-search" style="display: none;">
+                  <div class="table-filter-bar">
+                    <div class="field-input-wrap congestion-search-wrap">
+                      <span class="field-icon" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                      </span>
+                      <input type="text" id="congestion-search-input" class="field-input" placeholder="Search MRT station or bus stop (e.g. Sembawang, Hougang)..." oninput="handleCongestionSearch(this.value)" autocomplete="off">
+                      <button type="button" class="btn-icon-clear" onclick="clearCongestionSearch()" id="btn-clear-congestion-search" style="display: none;" aria-label="Clear station search">&times;</button>
+                    </div>
+
+                    <div class="custom-select" id="select-search-mode">
+                      <button type="button" class="custom-select-trigger" onclick="toggleCustomSelect('select-search-mode')" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="label-search-mode">All Modes</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      <div class="custom-select-menu" role="listbox">
+                        <div class="custom-select-option selected" role="option" onclick="selectCustomOption('select-search-mode', 'ALL', 'All Modes')">All Modes</div>
+                        <div class="custom-select-option" role="option" onclick="selectCustomOption('select-search-mode', 'MRT', 'MRT Stations')">MRT Stations</div>
+                        <div class="custom-select-option" role="option" onclick="selectCustomOption('select-search-mode', 'BUS', 'Bus Stops')">Bus Stops</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="congestion-search-status" class="search-status-bar" style="display: none;">
+                    <span id="congestion-search-status-text">Enter station name above...</span>
+                    <button type="button" class="btn-link-reset" onclick="clearCongestionSearch()">Clear &times;</button>
+                  </div>
+
+                  <div class="table-scroll-container">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th class="num" style="width: 50px;">Rank</th>
+                          <th>Station / Interchange</th>
+                          <th>Transit Mode</th>
+                          <th class="num">Peak Vol</th>
+                          <th class="num">3h Moving Avg</th>
+                          <th>Crowd Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="congestion-search-body">
+                        <tr>
+                          <td colspan="6" style="text-align: center; padding: 24px; color: var(--ink-muted);">
+                            Type a station name above to view its live morning peak congestion telemetry.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
         </div>
       </div>
     </section>
@@ -373,25 +494,61 @@
           <div class="view-banner">
             <div>
               <h2 class="view-title">Dual-Database Query Optimization Matrix</h2>
-              <p class="view-desc">PostgreSQL+PostGIS vs Neo4j execution latency</p>
+              <p class="view-desc">PostgreSQL+PostGIS vs Neo4j performance & execution plans</p>
             </div>
+            <button class="btn-brutal btn-primary" onclick="runLiveBenchmarks()" id="btn-run-benchmarks">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span id="txt-run-benchmarks">Run Live Benchmark Suite</span>
+            </button>
           </div>
 
           <div class="kpi-row">
-            <div class="kpi-card">
-              <span class="kpi-label">Graph Traversal Speedup</span>
+            <!-- Card 1: Graph Traversal Speedup (Clickable) -->
+            <div class="kpi-card clickable" onclick="openKpiModal('graph')" title="Click for Graph Pointer vs Relational Join Breakdown">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span class="kpi-label">Graph Traversal Gain</span>
+                <span class="kpi-drilldown-hint" style="font-size: 14px; font-weight: 700;">&rarr;</span>
+              </div>
               <span class="kpi-value num" style="color: var(--signal);">9.90x faster</span>
-              <span class="kpi-sub">Neo4j pointer hopping vs Recursive CTE</span>
+              <span class="kpi-sub">Neo4j pointer hops vs SQL CTE stack</span>
+              <svg class="kpi-micro-chart" viewBox="0 0 190 24" preserveAspectRatio="none">
+                <rect x="0" y="3" width="170" height="8" fill="#E5E7EB" rx="1"><title>SQL Recursive CTE: 219.6 ms</title></rect>
+                <text x="173" y="10" font-family="var(--font-mono)" font-size="8" fill="#6B7280">220ms</text>
+                <rect x="0" y="13" width="17" height="8" fill="#1D4ED8" rx="1"><title>Neo4j Cypher: 22.2 ms</title></rect>
+                <text x="21" y="20" font-family="var(--font-mono)" font-size="8" fill="#1D4ED8" font-weight="700">22ms</text>
+              </svg>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">PostGIS GiST R-Tree Gain</span>
+
+            <!-- Card 2: PostGIS GiST R-Tree Gain (Clickable) -->
+            <div class="kpi-card clickable" onclick="openKpiModal('gist')" title="Click for Spatial R-Tree Pruning Proof">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span class="kpi-label">PostGIS GiST R-Tree</span>
+                <span class="kpi-drilldown-hint" style="font-size: 14px; font-weight: 700;">&rarr;</span>
+              </div>
               <span class="kpi-value num" style="color: var(--shelter);">481.56x faster</span>
-              <span class="kpi-sub">ST_DWithin index vs sequential scan</span>
+              <span class="kpi-sub">99.8% bounding-box pruning</span>
+              <svg class="kpi-micro-chart" viewBox="0 0 190 24" preserveAspectRatio="none">
+                <rect x="0" y="3" width="160" height="8" fill="#E5E7EB" rx="1"><title>Cartesian ST_Distance: 94.9 ms</title></rect>
+                <text x="163" y="10" font-family="var(--font-mono)" font-size="8" fill="#6B7280">95ms</text>
+                <rect x="0" y="13" width="3" height="8" fill="#0F6738" rx="1"><title>GiST ST_DWithin: 0.20 ms</title></rect>
+                <text x="8" y="20" font-family="var(--font-mono)" font-size="8" fill="#0F6738" font-weight="700">0.2ms</text>
+              </svg>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Buffer Cache Hit Ratio</span>
-              <span class="kpi-value num">100% (0 disk I/O)</span>
-              <span class="kpi-sub">0 disk I/O</span>
+
+            <!-- Card 3: Buffer Cache Hit Ratio (Clickable) -->
+            <div class="kpi-card clickable" onclick="openKpiModal('buffers')" title="Click for Shared Buffers & WAL Durability Architecture">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span class="kpi-label">Shared Buffers Pool</span>
+                <span class="kpi-drilldown-hint" style="font-size: 14px; font-weight: 700;">&rarr;</span>
+              </div>
+              <span class="kpi-value num" style="color: var(--shelter);">100% In-Memory</span>
+              <span class="kpi-sub">0 physical disk I/O reads</span>
+              <svg class="kpi-micro-chart" viewBox="0 0 190 24" preserveAspectRatio="none">
+                <rect x="0" y="3" width="150" height="8" fill="#0F6738" rx="1"><title>PostgreSQL Shared Buffers: 4,120 RAM hits (100%)</title></rect>
+                <text x="153" y="10" font-family="var(--font-mono)" font-size="8" fill="#0F6738" font-weight="700">RAM</text>
+                <rect x="0" y="13" width="0" height="8" fill="#991B1B" rx="1"><title>Disk I/O: 0 reads</title></rect>
+                <text x="0" y="20" font-family="var(--font-mono)" font-size="8" fill="#6B7280">0 disk reads</text>
+              </svg>
             </div>
           </div>
 
@@ -403,39 +560,39 @@
                 <span class="chart-subtitle">Optimized Dual-DB Engine vs Naive SQL Baseline</span>
               </div>
             </div>
-            <svg class="layercake-svg" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet">
-              <text x="170" y="32" class="chart-axis-text" text-anchor="end">Unsheltered Bus Stops</text>
-              <text x="170" y="76" class="chart-axis-text" text-anchor="end">Sheltered Interchanges</text>
-              <text x="170" y="120" class="chart-axis-text" text-anchor="end">Peak Congestion Window</text>
-              <text x="170" y="164" class="chart-axis-text" text-anchor="end">150m Covered Walkway</text>
-              <text x="170" y="208" class="chart-axis-text" text-anchor="end">Multi-Hop Transit Path</text>
+            <svg class="layercake-svg" viewBox="0 0 920 220" preserveAspectRatio="xMidYMid meet">
+              <text x="175" y="30" class="chart-axis-text" text-anchor="end">Unsheltered Bus Stops</text>
+              <text x="175" y="70" class="chart-axis-text" text-anchor="end">Sheltered Interchanges</text>
+              <text x="175" y="110" class="chart-axis-text" text-anchor="end">Peak Congestion Window</text>
+              <text x="175" y="150" class="chart-axis-text" text-anchor="end">150m Covered Walkway</text>
+              <text x="175" y="190" class="chart-axis-text" text-anchor="end">Multi-Hop Transit Path</text>
 
-              <line x1="180" y1="10" x2="180" y2="225" class="chart-axis-line" />
+              <line x1="185" y1="10" x2="185" y2="208" class="chart-axis-line" />
 
               <!-- Pair 1 -->
-              <rect x="182" y="20" width="120" height="16" fill="var(--surface-active)" class="chart-bar"><title>Naive: 14.33 ms</title></rect>
-              <rect x="182" y="20" width="67" height="16" fill="var(--signal)" class="chart-bar"><title>Optimized: 8.03 ms</title></rect>
-              <text x="310" y="33" class="chart-axis-text">1.78x (8.0 ms vs 14.3 ms)</text>
+              <rect x="188" y="18" width="95" height="14" fill="var(--surface-active)" class="chart-bar"><title>Naive: 14.33 ms</title></rect>
+              <rect x="188" y="18" width="53" height="14" fill="var(--signal)" class="chart-bar"><title>Optimized: 8.03 ms</title></rect>
+              <text x="295" y="30" class="chart-axis-text">1.78x (8.03 ms vs 14.33 ms)</text>
 
               <!-- Pair 2 -->
-              <rect x="182" y="64" width="70" height="16" fill="var(--surface-active)" class="chart-bar"><title>Naive: 4.24 ms</title></rect>
-              <rect x="182" y="64" width="66" height="16" fill="var(--signal)" class="chart-bar"><title>Optimized: 4.03 ms</title></rect>
-              <text x="260" y="77" class="chart-axis-text">1.05x (4.0 ms vs 4.2 ms)</text>
+              <rect x="188" y="58" width="58" height="14" fill="var(--surface-active)" class="chart-bar"><title>Naive: 4.24 ms</title></rect>
+              <rect x="188" y="58" width="55" height="14" fill="var(--signal)" class="chart-bar"><title>Optimized: 4.03 ms</title></rect>
+              <text x="258" y="70" class="chart-axis-text">1.05x (4.03 ms vs 4.24 ms)</text>
 
               <!-- Pair 3 -->
-              <rect x="182" y="108" width="55" height="16" fill="var(--surface-active)" class="chart-bar"><title>Naive: 1.90 ms</title></rect>
-              <rect x="182" y="108" width="15" height="16" fill="var(--signal)" class="chart-bar"><title>Optimized: 0.46 ms</title></rect>
-              <text x="245" y="121" class="chart-axis-text">4.15x (0.46 ms vs 1.90 ms)</text>
+              <rect x="188" y="98" width="45" height="14" fill="var(--surface-active)" class="chart-bar"><title>Naive: 1.90 ms</title></rect>
+              <rect x="188" y="98" width="12" height="14" fill="var(--signal)" class="chart-bar"><title>Optimized: 0.46 ms</title></rect>
+              <text x="245" y="110" class="chart-axis-text">4.15x (0.46 ms vs 1.90 ms)</text>
 
-              <!-- Pair 4 (GiST 481x) -->
-              <rect x="182" y="152" width="400" height="16" fill="var(--surface-active)" class="chart-bar"><title>Naive: 94.87 ms</title></rect>
-              <rect x="182" y="152" width="6" height="16" fill="var(--shelter)" class="chart-bar"><title>Optimized GiST: 0.20 ms</title></rect>
-              <text x="590" y="165" class="chart-axis-text" fill="var(--shelter)">481.56x (0.20 ms vs 94.9 ms)</text>
+              <!-- Pair 4 -->
+              <rect x="188" y="138" width="280" height="14" fill="var(--surface-active)" class="chart-bar"><title>Naive: 94.87 ms</title></rect>
+              <rect x="188" y="138" width="6" height="14" fill="var(--shelter)" class="chart-bar"><title>Optimized GiST: 0.20 ms</title></rect>
+              <text x="480" y="150" class="chart-axis-text" fill="var(--shelter)">481.56x (0.20 ms vs 94.87 ms)</text>
 
-              <!-- Pair 5 (Neo4j 9.9x) -->
-              <rect x="182" y="196" width="500" height="16" fill="var(--surface-active)" class="chart-bar"><title>CTE: 219.6 ms</title></rect>
-              <rect x="182" y="196" width="65" height="16" fill="var(--transit)" class="chart-bar"><title>Neo4j: 22.18 ms</title></rect>
-              <text x="690" y="209" class="chart-axis-text" fill="var(--transit)">9.90x (22.2 ms vs 219.6 ms)</text>
+              <!-- Pair 5 -->
+              <rect x="188" y="178" width="310" height="14" fill="var(--surface-active)" class="chart-bar"><title>CTE: 219.6 ms</title></rect>
+              <rect x="188" y="178" width="45" height="14" fill="var(--transit)" class="chart-bar"><title>Neo4j: 22.18 ms</title></rect>
+              <text x="510" y="190" class="chart-axis-text" fill="var(--transit)">9.90x (22.2 ms vs 219.6 ms)</text>
             </svg>
           </div>
 
@@ -443,6 +600,7 @@
           <div class="data-card">
             <div class="data-card-header">
               <h3 class="data-card-title">Query Optimization Benchmarks</h3>
+              <span id="bench-last-run" style="font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--ink-faint);">Status: Ready</span>
             </div>
             <table class="data-table">
               <thead>
@@ -452,49 +610,49 @@
                   <th class="num">Optimized Query</th>
                   <th class="num">Naive Baseline</th>
                   <th class="num">Speedup</th>
-                  <th style="width: 90px; text-align: center;">Query</th>
+                  <th style="width: 100px; text-align: center;">SQL Query</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="benchmark-pairs-body">
                 <tr>
                   <td class="num">1</td>
                   <td>Unsheltered Bus Stops (NOT EXISTS vs Subquery)</td>
-                  <td class="num">8.03 ms</td>
-                  <td class="num">14.33 ms</td>
-                  <td class="num" style="font-weight: 700; color: var(--signal);">1.78x</td>
-                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(1)">(?)</button></td>
+                  <td class="num" id="bench-p1-opt">8.03 ms</td>
+                  <td class="num" id="bench-p1-naive">14.33 ms</td>
+                  <td class="num" id="bench-p1-speedup" style="font-weight: 700; color: var(--signal);">1.78x</td>
+                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(1)">View SQL</button></td>
                 </tr>
                 <tr>
                   <td class="num">2</td>
                   <td>Sheltered Interchanges (Inner Join vs Correlated Subquery)</td>
-                  <td class="num">4.03 ms</td>
-                  <td class="num">4.24 ms</td>
-                  <td class="num" style="font-weight: 700; color: var(--signal);">1.05x</td>
-                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(2)">(?)</button></td>
+                  <td class="num" id="bench-p2-opt">4.03 ms</td>
+                  <td class="num" id="bench-p2-naive">4.24 ms</td>
+                  <td class="num" id="bench-p2-speedup" style="font-weight: 700; color: var(--signal);">1.05x</td>
+                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(2)">View SQL</button></td>
                 </tr>
                 <tr>
                   <td class="num">3</td>
                   <td>Peak Congestion Window Function (PARTITION BY vs Self-Join)</td>
-                  <td class="num">0.46 ms</td>
-                  <td class="num">1.90 ms</td>
-                  <td class="num" style="font-weight: 700; color: var(--signal);">4.15x</td>
-                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(3)">(?)</button></td>
+                  <td class="num" id="bench-p3-opt">0.46 ms</td>
+                  <td class="num" id="bench-p3-naive">1.90 ms</td>
+                  <td class="num" id="bench-p3-speedup" style="font-weight: 700; color: var(--signal);">4.15x</td>
+                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(3)">View SQL</button></td>
                 </tr>
                 <tr>
                   <td class="num">4</td>
                   <td>150m Covered Walkway Proximity (PostGIS GiST ST_DWithin vs Euclidean)</td>
-                  <td class="num">0.20 ms</td>
-                  <td class="num">94.87 ms</td>
-                  <td class="num" style="font-weight: 700; color: var(--shelter);">481.56x</td>
-                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(4)">(?)</button></td>
+                  <td class="num" id="bench-p4-opt">0.20 ms</td>
+                  <td class="num" id="bench-p4-naive">94.87 ms</td>
+                  <td class="num" id="bench-p4-speedup" style="font-weight: 700; color: var(--shelter);">481.56x</td>
+                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(4)">View SQL</button></td>
                 </tr>
                 <tr>
                   <td class="num">5</td>
                   <td>Multi-Hop Path (Neo4j Cypher vs PostgreSQL Recursive CTE)</td>
-                  <td class="num">22.18 ms</td>
-                  <td class="num">219.60 ms</td>
-                  <td class="num" style="font-weight: 700; color: var(--signal);">9.90x</td>
-                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(5)">(?)</button></td>
+                  <td class="num" id="bench-p5-opt">22.18 ms</td>
+                  <td class="num" id="bench-p5-naive">219.60 ms</td>
+                  <td class="num" id="bench-p5-speedup" style="font-weight: 700; color: var(--transit);">9.90x</td>
+                  <td style="text-align: center;"><button class="btn-query-inspect" onclick="openPairModal(5)">View SQL</button></td>
                 </tr>
               </tbody>
             </table>

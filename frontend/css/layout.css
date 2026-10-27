@@ -2,15 +2,25 @@
    APP SHELL, HEADER & GRID LAYOUT
    ========================================================================== */
 html, body {
+  width: 100%;
   height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
   background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--fs-body);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
 }
 
 /* App Header Shell */
@@ -102,6 +112,7 @@ html, body {
 .main-view {
   flex: 1;
   height: calc(100vh - 52px);
+  overflow: hidden;
   display: flex;
   position: relative;
   background: var(--paper);
@@ -117,39 +128,10 @@ html, body {
   display: flex;
 }
 
-/* Mobile View Toggle */
-.mobile-tab-bar {
-  display: none;
-  background: var(--surface);
-  border-bottom: 2px solid var(--border);
-  padding: 6px;
-  gap: 6px;
-}
-
-.mobile-tab-btn {
-  flex: 1;
-  padding: 8px;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sub);
-  font-weight: 600;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  color: var(--ink-muted);
-  cursor: pointer;
-  min-height: 40px;
-}
-
-.mobile-tab-btn.active {
-  background: var(--surface);
-  color: var(--ink);
-  border-color: var(--border);
-  box-shadow: 1px 1px 0 var(--border);
-}
 
 /* Router Sidebar: Pinned Controls + Independent Itinerary Scroll */
 .sidebar-pane {
-  width: 440px;
+  width: 400px;
   height: 100%;
   background: var(--surface);
   border-right: 2px solid var(--border);
@@ -157,6 +139,7 @@ html, body {
   flex-direction: column;
   flex-shrink: 0;
   z-index: 10;
+  overflow: hidden;
 }
 
 .sidebar-pinned-controls {
@@ -207,12 +190,14 @@ html, body {
 /* Persistent Map Canvas */
 .map-pane {
   flex: 1;
+  min-width: 0;
   height: 100%;
   position: relative;
   background: var(--paper);
   display: flex;
   flex-direction: column;
   border-left: 2px solid var(--border);
+  overflow: hidden;
 }
 
 #leaflet-map {
@@ -226,16 +211,26 @@ html, body {
   bottom: 24px !important;
   left: 16px !important;
 }
+/* Analytical & Benchmark View Panes */
+.data-view-pane {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--paper);
+  padding: 20px 28px;
+}
 
-/* Responsive Queries */
-@media (max-width: 860px) {
-  .app-header { padding: 0 12px; }
-  .mobile-tab-bar { display: flex; }
-  .main-view { flex-direction: column; }
-  #pane-router { flex-direction: column; }
-  .sidebar-pane { width: 100%; border-right: none; border-bottom: 2px solid var(--border); }
-  .map-pane { width: 100%; height: 100%; display: none; border-left: none; }
-  #pane-router.show-map .sidebar-pane { display: none; }
-  #pane-router.show-map .map-pane { display: flex; }
-  .kpi-row { grid-template-columns: 1fr; }
+.data-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+@media (max-width: 800px) {
+  .sidebar-pane {
+    width: 360px;
+  }
 }

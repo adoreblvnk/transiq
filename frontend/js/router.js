@@ -55,7 +55,8 @@ function renderActiveRoute(route) {
   const durationMin = Math.round(route.base_travel_time || 31);
   document.getElementById('card-mode-badge').textContent = modeNames[AppState.activeMode] || 'FASTEST';
   document.getElementById('card-time').textContent = formatDuration(durationMin);
-  document.getElementById('map-time-label').textContent = formatDuration(durationMin);
+  const mapTimeEl = document.getElementById('map-time-label');
+  if (mapTimeEl) mapTimeEl.textContent = formatDuration(durationMin);
 
   const modeLabels = {
     'FASTEST': 'Fastest',
@@ -64,22 +65,31 @@ function renderActiveRoute(route) {
     'CROWD': 'Less Crowd',
     'TRANSFERS': 'Fewer Transfers'
   };
-  document.getElementById('map-mode-label').textContent = modeLabels[AppState.activeMode] || 'Fastest';
+  const mapModeEl = document.getElementById('map-mode-label');
+  if (mapModeEl) mapModeEl.textContent = modeLabels[AppState.activeMode] || 'Fastest';
+
+  const corridorEl = document.getElementById('map-corridor-label');
+  if (corridorEl && route.steps && route.steps.length > 0) {
+    const transitSteps = route.steps.filter(s => s.step_type === 'TRANSIT');
+    if (transitSteps.length > 0) {
+      corridorEl.textContent = `${transitSteps[0].service || transitSteps[0].transit_mode} Transit`;
+    }
+  }
 
   // Shelter Badge (No redundant 0m rain)
   const shelterPill = document.getElementById('card-shelter-pill');
   const totalDist = (route.sheltered_m || 0) + (route.unsheltered_m || 0);
+  const mapShelterEl = document.getElementById('map-shelter-label');
   if (route.unsheltered_m === 0) {
     shelterPill.textContent = '100% sheltered';
     shelterPill.className = 'pill shelter';
-    document.getElementById('map-shelter-label').textContent = '100%';
+    if (mapShelterEl) mapShelterEl.textContent = '100%';
   } else {
     const pct = totalDist > 0 ? Math.round((route.sheltered_m / totalDist) * 100) : 70;
     shelterPill.textContent = `${pct}% sheltered (${Math.round(route.unsheltered_m)}m open)`;
     shelterPill.className = 'pill rain';
-    document.getElementById('map-shelter-label').textContent = `${pct}%`;
+    if (mapShelterEl) mapShelterEl.textContent = `${pct}%`;
   }
-
   // Plain English Crowd Badge
   const crowdPill = document.getElementById('card-crowd-pill');
   if (route.lsd_leg_count > 0) {
@@ -110,9 +120,6 @@ function renderActiveRoute(route) {
   document.getElementById('bar-shelter').style.width = `${Math.min(100, Math.max(15, shelterPct))}%`;
   document.getElementById('bar-transit').style.width = `${Math.max(10, transitPct)}%`;
   document.getElementById('bar-open').style.width = `${openPct}%`;
-  const shelterText = shelterDist >= 1000 ? (shelterDist / 1000).toFixed(1) + 'km' : Math.round(shelterDist) + 'm';
-  document.getElementById('txt-bar-walk').textContent = `Sheltered: ${shelterText}`;
-  document.getElementById('txt-bar-transit').textContent = `Duration: ${formatDuration(durationMin)}`;
 
   // Directions header (transfers)
   document.getElementById('itinerary-leg-count').textContent = `${transferCount} transfer${transferCount === 1 ? '' : 's'}`;
@@ -144,6 +151,7 @@ function renderActiveRoute(route) {
     `;
   }).join('');
 }
+
 
 function showEmptyShelterNotice() {
   document.getElementById('active-route-card').style.display = 'none';

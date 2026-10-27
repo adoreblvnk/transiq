@@ -608,6 +608,107 @@
   background: var(--surface-hover);
 }
 
+/* Sticky Table Container & Scroll Affordances */
+.table-scroll-container {
+  max-height: 480px;
+  overflow-y: auto;
+  position: relative;
+  border-bottom: 1.5px solid var(--border-subtle);
+}
+
+.table-scroll-container thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface-subtle);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.scroll-indicator-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-faint);
+}
+
+.table-filter-bar {
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1.5px solid var(--border-subtle);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.congestion-search-wrap {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  background: #FEF3C7;
+  border-bottom: 1px solid #FDE68A;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: #92400E;
+}
+
+.btn-link-reset {
+  background: none;
+  border: none;
+  color: var(--signal);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+/* Congestion Sub-Navigation Switcher */
+.sub-tab-group {
+  display: inline-flex;
+  background: var(--surface-subtle);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+  gap: 2px;
+}
+
+.sub-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sub-tab-btn:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+.sub-tab-btn.active {
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+
 .data-table {
   width: 100%;
   border-collapse: collapse;

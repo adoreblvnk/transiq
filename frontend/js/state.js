@@ -9,6 +9,8 @@ const AppState = {
   destText: 'QUEENSWAY SHOPPING CENTRE (149053)',
   destPostal: '149053',
   currentRoute: null,
+  allRoutes: [],
+  activeRouteIndex: 0,
   leafletMap: null,
   mapLayers: [],
   rawCongestionRows: [],
